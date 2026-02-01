@@ -1,0 +1,4396 @@
+<!--
+  ═══════════════════════════════════════════
+  GABRIEL FAMILY TRIP PLANNER
+  ═══════════════════════════════════════════
+
+  SETUP INSTRUCTIONS:
+
+  1. Firebase Setup:
+     - Go to console.firebase.google.com
+     - Create a new project (or use existing)
+     - Go to Project Settings > General > Your Apps
+     - Click the web icon (</>) to add a web app
+     - Copy the firebaseConfig object
+     - Paste it into the FIREBASE CONFIGURATION section below
+     - Go to Build > Realtime Database > Create Database
+     - Set rules to: { "rules": { ".read": true, ".write": true } }
+
+  2. Netlify Deployment:
+     - Push this code to a GitHub repository
+     - Go to app.netlify.com and click "Add new site" > "Import from Git"
+     - Connect your GitHub account and select the repo
+     - Build command: (leave empty - static HTML)
+     - Publish directory: / (root)
+     - Click "Deploy site" — done!
+     - Netlify auto-deploys on every push to main
+
+  3. PWA / Add to Home Screen:
+     - On iOS Safari: Share > "Add to Home Screen"
+     - On Android Chrome: Menu > "Add to Home Screen"
+     - The app works offline once loaded
+
+  4. Linking from External Site:
+     - Simply link to the Netlify URL
+     - Deep-link to a trip: https://your-app.netlify.app/#/trip/TRIP_ID
+     - The app is fully self-contained; no external CSS/JS dependencies
+
+  ═══════════════════════════════════════════
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a3a5c">
+
+<!-- Security -->
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+
+<!-- SEO & Link Previews -->
+<meta name="description" content="Packing lists for Gabriel family trips — create, share, and track what to pack.">
+<meta property="og:title" content="Gabriel Family Trip Planner">
+<meta property="og:description" content="Packing lists for family trips">
+<meta property="og:type" content="website">
+<meta property="og:image" content="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 630'%3E%3Crect width='1200' height='630' rx='0' fill='%231a3a5c'/%3E%3Ctext x='600' y='280' font-size='160' text-anchor='middle' fill='white'%3E🧳%3C/text%3E%3Ctext x='600' y='420' font-size='60' font-family='sans-serif' font-weight='bold' text-anchor='middle' fill='white'%3EGabriel Family Trip Planner%3C/text%3E%3C/svg%3E">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Gabriel Family Trip Planner">
+<meta name="twitter:description" content="Packing lists for family trips">
+
+<title>Gabriel Family Trip Planner</title>
+
+<!-- Favicon (inline SVG) -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%231a3a5c'/><text x='16' y='24' font-size='22' text-anchor='middle'>🧳</text></svg>">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='28' fill='%231a3a5c'/><text x='90' y='120' font-size='96' text-anchor='middle' fill='white'>🧳</text></svg>">
+<style>
+  :root {
+    --blue-dark: #1a3a5c;
+    --blue-mid: #2c5f8a;
+    --blue-light: #4a90c4;
+    --snow-white: #f4f7fa;
+    --snow-gray: #e8ecf1;
+    --green-packed: #2e7d32;
+    --green-light: #e8f5e9;
+    --orange-buy: #ef6c00;
+    --orange-light: #fff3e0;
+    --gray-text: #555;
+    --gray-light: #999;
+    --shadow: 0 2px 8px rgba(0,0,0,0.12);
+    --radius: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--snow-white);
+    color: #333;
+    min-height: 100vh;
+    padding-bottom: 80px;
+  }
+
+  /* ── Loading Screen ── */
+  .loading-screen {
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(135deg, var(--blue-dark), var(--blue-mid));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    transition: opacity .4s ease;
+  }
+  .loading-screen.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .loading-icon { font-size: 56px; margin-bottom: 16px; }
+  .loading-title { color: #fff; font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+  .loading-sub { color: rgba(255,255,255,.7); font-size: 14px; margin-bottom: 24px; }
+  .loading-spinner {
+    width: 36px; height: 36px;
+    border: 3px solid rgba(255,255,255,.25);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* ── Header ── */
+  header {
+    background: linear-gradient(135deg, var(--blue-dark), var(--blue-mid));
+    color: #fff;
+    padding: 16px 20px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: var(--shadow);
+  }
+  header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  header h1 .mountain {
+    font-size: 26px;
+    opacity: .85;
+  }
+  .header-stats {
+    display: flex;
+    gap: 16px;
+    margin-top: 6px;
+    font-size: 13px;
+    opacity: .9;
+  }
+  .header-stats span { display: flex; align-items: center; gap: 4px; }
+
+  /* ── Toolbar ── */
+  .toolbar {
+    display: flex;
+    gap: 8px;
+    padding: 12px 16px;
+    background: #fff;
+    border-bottom: 1px solid var(--snow-gray);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .toolbar button {
+    flex-shrink: 0;
+    padding: 8px 14px;
+    border: 1px solid var(--snow-gray);
+    border-radius: 20px;
+    background: #fff;
+    font-size: 13px;
+    color: var(--blue-dark);
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .toolbar button:active, .toolbar button.active {
+    background: var(--blue-dark);
+    color: #fff;
+    border-color: var(--blue-dark);
+  }
+
+  /* ── Import Section ── */
+  .import-section {
+    display: none;
+    padding: 16px;
+    background: #fff;
+    margin: 12px;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+  }
+  .import-section.open { display: block; }
+  .import-section h3 { font-size: 15px; margin-bottom: 8px; color: var(--blue-dark); }
+  .import-section textarea {
+    width: 100%;
+    height: 120px;
+    border: 1px solid var(--snow-gray);
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 14px;
+    resize: vertical;
+    font-family: inherit;
+  }
+  .import-section .import-controls {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    align-items: center;
+  }
+  .import-section select {
+    padding: 8px 12px;
+    border: 1px solid var(--snow-gray);
+    border-radius: 8px;
+    font-size: 14px;
+    background: #fff;
+  }
+
+  /* ── Import Preview Modal ── */
+  .import-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.5);
+    z-index: 250;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 20px;
+    overflow-y: auto;
+  }
+  .import-overlay.open { display: flex; }
+  .import-modal {
+    background: #fff;
+    width: 100%;
+    max-width: 600px;
+    border-radius: var(--radius);
+    box-shadow: 0 8px 30px rgba(0,0,0,.25);
+    animation: slideUp .25s ease;
+    margin: auto;
+  }
+  .import-modal-header {
+    padding: 16px 20px;
+    background: var(--blue-dark);
+    color: #fff;
+    border-radius: var(--radius) var(--radius) 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .import-modal-header h3 { color: #fff; margin: 0; font-size: 17px; }
+  .import-modal-header .close-btn {
+    background: none; border: none; color: #fff; font-size: 22px; cursor: pointer; padding: 0 4px;
+  }
+  .import-modal-body { padding: 16px 20px; max-height: 60vh; overflow-y: auto; }
+  .import-modal-footer {
+    padding: 14px 20px;
+    border-top: 1px solid var(--snow-gray);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  /* Bulk bar */
+  .import-bulk-bar {
+    display: flex;
+    gap: 8px;
+    padding: 10px 20px;
+    background: #f0f4f8;
+    align-items: center;
+    flex-wrap: wrap;
+    font-size: 13px;
+    border-bottom: 1px solid var(--snow-gray);
+  }
+  .import-bulk-bar select {
+    padding: 6px 10px;
+    border: 1px solid var(--snow-gray);
+    border-radius: 6px;
+    font-size: 13px;
+    background: #fff;
+  }
+  .import-bulk-bar button {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 6px;
+    background: var(--blue-mid);
+    color: #fff;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .import-bulk-bar .select-actions { display: flex; gap: 6px; margin-left: auto; }
+  .import-bulk-bar .select-actions button {
+    background: none;
+    color: var(--blue-mid);
+    font-size: 12px;
+    text-decoration: underline;
+    padding: 2px;
+  }
+
+  /* Import item row */
+  .import-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 0;
+    border-bottom: 1px solid #f0f2f5;
+    flex-wrap: wrap;
+  }
+  .import-item:last-child { border-bottom: none; }
+  .import-item input[type="checkbox"] { width: 18px; height: 18px; flex-shrink: 0; cursor: pointer; }
+  .import-item .ii-name {
+    flex: 1;
+    min-width: 100px;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .import-item .ii-qty {
+    width: 50px;
+    padding: 6px 8px;
+    border: 1px solid var(--snow-gray);
+    border-radius: 6px;
+    font-size: 13px;
+    text-align: center;
+  }
+  .import-item .ii-cat {
+    padding: 6px 8px;
+    border: 1px solid var(--snow-gray);
+    border-radius: 6px;
+    font-size: 12px;
+    background: #fff;
+    max-width: 130px;
+  }
+  .import-item .ii-person {
+    padding: 6px 8px;
+    border: 1px solid var(--snow-gray);
+    border-radius: 6px;
+    font-size: 12px;
+    background: #fff;
+    max-width: 100px;
+  }
+  .import-item .ii-toggles {
+    display: flex;
+    gap: 4px;
+  }
+  .import-item .ii-toggle {
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--snow-gray);
+    font-size: 11px;
+    cursor: pointer;
+    background: #fff;
+    color: var(--gray-text);
+    transition: all .15s;
+  }
+  .import-item .ii-toggle.active-buy {
+    background: var(--orange-light);
+    color: var(--orange-buy);
+    border-color: var(--orange-buy);
+  }
+  .import-item .ii-toggle.active-always {
+    background: #e3f2fd;
+    color: var(--blue-light);
+    border-color: var(--blue-light);
+  }
+  .import-item .ii-remove {
+    background: none;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    opacity: .4;
+    padding: 2px;
+  }
+  .import-item .ii-remove:hover { opacity: 1; }
+  .import-item.duplicate {
+    opacity: .5;
+    background: #fff8e1;
+  }
+  .import-item.duplicate .ii-name::after {
+    content: ' (duplicate)';
+    color: var(--orange-buy);
+    font-size: 11px;
+    font-weight: 400;
+  }
+
+  @media (max-width: 500px) {
+    .import-item { gap: 6px; }
+    .import-item .ii-cat { max-width: 110px; font-size: 11px; }
+    .import-item .ii-person { max-width: 80px; font-size: 11px; }
+  }
+
+  /* ── Category Sections ── */
+  .category-group {
+    margin: 12px;
+    background: #fff;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .category-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px;
+    background: var(--snow-gray);
+    cursor: pointer;
+    user-select: none;
+  }
+  .category-header h2 {
+    font-size: 16px;
+    color: var(--blue-dark);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .category-header .cat-count {
+    font-size: 12px;
+    background: var(--blue-light);
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+  .category-header .chevron {
+    transition: transform .2s;
+    color: var(--gray-light);
+  }
+  .category-group.collapsed .category-header .chevron {
+    transform: rotate(-90deg);
+  }
+  .category-group.collapsed .category-items { display: none; }
+
+  /* ── Person Subgroup ── */
+  .person-subgroup {
+    border-top: 1px solid var(--snow-gray);
+  }
+  .person-header {
+    padding: 10px 16px 10px 28px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--blue-mid);
+    background: #f9fbfd;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .person-header .person-count {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--gray-light);
+  }
+
+  /* ── Item Row ── */
+  .item-row {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    border-top: 1px solid #f0f2f5;
+    gap: 10px;
+    transition: background .3s ease, opacity .3s ease;
+    cursor: pointer;
+  }
+  .item-row:active { background: #f0f4f8; }
+  .item-row.packed {
+    background: var(--green-light);
+    opacity: .65;
+  }
+  .item-row.packed:active { background: #c8e6c9; }
+  .item-row.need-to-buy:not(.packed) {
+    border-left: 3px solid var(--orange-buy);
+    background: var(--orange-light);
+  }
+
+  .item-checkbox {
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--gray-light);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all .2s ease;
+  }
+  .item-row.packed .item-checkbox {
+    background: var(--green-packed);
+    border-color: var(--green-packed);
+    transform: scale(1);
+  }
+  .item-row.packed .item-checkbox::after {
+    content: '✓';
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  @keyframes checkPop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.25); }
+    100% { transform: scale(1); }
+  }
+  .item-checkbox.pop { animation: checkPop .25s ease; }
+
+  /* ── Item slide-in animation ── */
+  @keyframes itemSlideIn {
+    from { opacity: 0; transform: translateX(-12px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  .item-row-wrapper { animation: itemSlideIn .3s ease both; }
+  .item-row-wrapper:nth-child(1) { animation-delay: 0s; }
+  .item-row-wrapper:nth-child(2) { animation-delay: .03s; }
+  .item-row-wrapper:nth-child(3) { animation-delay: .06s; }
+  .item-row-wrapper:nth-child(4) { animation-delay: .09s; }
+  .item-row-wrapper:nth-child(5) { animation-delay: .12s; }
+  .item-row-wrapper:nth-child(n+6) { animation-delay: .15s; }
+
+  /* ── Animated strikethrough ── */
+  @keyframes strikeAcross {
+    from { text-decoration-color: transparent; }
+    to { text-decoration-color: var(--gray-light); }
+  }
+
+  .item-name {
+    flex: 1;
+    font-size: 15px;
+    min-width: 0;
+    transition: color .3s ease;
+    text-decoration: line-through transparent;
+  }
+  .item-row.packed .item-name {
+    animation: strikeAcross .35s ease forwards;
+    text-decoration: line-through var(--gray-light);
+    color: var(--gray-light);
+  }
+  .item-row:not(.packed) .item-name {
+    text-decoration: none;
+  }
+
+  .item-qty {
+    font-size: 12px;
+    color: var(--gray-light);
+    background: var(--snow-gray);
+    padding: 2px 8px;
+    border-radius: 8px;
+    flex-shrink: 0;
+    font-weight: 600;
+  }
+
+  .item-indicators {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+    align-items: center;
+  }
+  .indicator {
+    font-size: 16px;
+    line-height: 1;
+  }
+  .indicator-buy { color: var(--orange-buy); }
+  .indicator-always { color: #f9a825; }
+
+  .item-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .item-actions button {
+    background: none;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px;
+    opacity: .4;
+    transition: opacity .15s;
+  }
+  .item-actions button:active { opacity: 1; }
+
+  /* ── Add Item Modal ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.4);
+    z-index: 200;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: #fff;
+    width: 100%;
+    max-width: 500px;
+    border-radius: 16px 16px 0 0;
+    padding: 20px;
+    animation: slideUp .25s ease;
+  }
+  @keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+  .modal h3 {
+    font-size: 17px;
+    color: var(--blue-dark);
+    margin-bottom: 14px;
+  }
+  .modal label {
+    display: block;
+    font-size: 13px;
+    color: var(--gray-text);
+    margin-bottom: 4px;
+    margin-top: 10px;
+  }
+  .modal input, .modal select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--snow-gray);
+    border-radius: 8px;
+    font-size: 15px;
+    font-family: inherit;
+  }
+  .modal .checkbox-row {
+    display: flex;
+    gap: 16px;
+    margin-top: 12px;
+  }
+  .modal .checkbox-row label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    color: #333;
+    margin: 0;
+  }
+  .modal .checkbox-row input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+  }
+  .modal .modal-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .modal .modal-buttons button {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-primary {
+    background: var(--blue-dark);
+    color: #fff;
+  }
+  .btn-primary:active { background: #0f2a45; }
+  .btn-secondary {
+    background: var(--snow-gray);
+    color: var(--gray-text);
+  }
+  .btn-danger {
+    background: #ffebee;
+    color: #c62828;
+  }
+  .btn-save-another {
+    background: var(--blue-light);
+    color: #fff;
+    font-size: 13px;
+  }
+
+  /* ── FAB ── */
+  .fab-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 150;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+  }
+  .fab {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--blue-dark);
+    color: #fff;
+    border: none;
+    font-size: 28px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform .15s;
+  }
+  .fab:active { transform: scale(.92); }
+
+  /* ── Offline Banner ── */
+  .offline-banner {
+    display: none;
+    padding: 8px 16px;
+    background: #455a64;
+    color: #fff;
+    font-size: 13px;
+    text-align: center;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .offline-banner.visible { display: flex; }
+  .offline-banner .offline-icon { font-size: 15px; }
+  .sync-banner {
+    display: none;
+    padding: 8px 16px;
+    background: var(--green-packed);
+    color: #fff;
+    font-size: 13px;
+    text-align: center;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: opacity .5s;
+  }
+  .sync-banner.visible { display: flex; }
+  header.offline {
+    background: linear-gradient(135deg, #37474f, #546e7a);
+  }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #333;
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    z-index: 300;
+    opacity: 0;
+    transition: opacity .3s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; pointer-events: auto; }
+  .toast button {
+    background: none;
+    border: none;
+    color: var(--blue-light);
+    font-weight: 600;
+    margin-left: 12px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+
+  /* ── Empty State ── */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--gray-light);
+  }
+  .empty-state .mountain-icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-state p { font-size: 15px; }
+
+  /* ── Filter Bar ── */
+  .filter-bar {
+    display: flex;
+    gap: 6px;
+    padding: 8px 16px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .filter-pill {
+    padding: 6px 12px;
+    border-radius: 16px;
+    border: 1px solid var(--snow-gray);
+    background: #fff;
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    color: var(--gray-text);
+    transition: all .15s;
+  }
+  .filter-pill.active {
+    background: var(--blue-dark);
+    color: #fff;
+    border-color: var(--blue-dark);
+  }
+
+  /* ── View Toggles ── */
+  .view-toggles {
+    display: flex;
+    gap: 6px;
+    padding: 4px 16px 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+  }
+  .view-toggle {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border-radius: 14px;
+    border: 1px solid var(--snow-gray);
+    background: #fff;
+    font-size: 12px;
+    cursor: pointer;
+    color: var(--gray-text);
+    transition: all .15s;
+    user-select: none;
+  }
+  .view-toggle.active {
+    border-color: var(--blue-mid);
+    background: #e8f0fe;
+    color: var(--blue-dark);
+  }
+  .view-toggle .toggle-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--gray-light);
+    transition: background .15s;
+  }
+  .view-toggle.active .toggle-dot { background: var(--blue-mid); }
+  .person-filter-select {
+    padding: 5px 10px;
+    border-radius: 14px;
+    border: 1px solid var(--snow-gray);
+    font-size: 12px;
+    background: #fff;
+    color: var(--gray-text);
+    cursor: pointer;
+  }
+
+  /* ── Category Progress ── */
+  .cat-progress {
+    height: 3px;
+    background: var(--snow-gray);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 4px;
+  }
+  .cat-progress-fill {
+    height: 100%;
+    background: var(--green-packed);
+    border-radius: 2px;
+    transition: width .4s ease;
+  }
+  .category-header .cat-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+  .category-header .cat-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* ── Swipe to Delete ── */
+  .item-row-wrapper {
+    position: relative;
+    overflow: hidden;
+  }
+  .item-row-wrapper .swipe-delete-bg {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 80px;
+    background: #c62828;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 20px;
+  }
+  .item-row-wrapper .item-row {
+    position: relative;
+    z-index: 1;
+    background: #fff;
+    transition: transform .2s ease;
+  }
+  .item-row-wrapper .item-row.packed {
+    background: var(--green-light);
+  }
+  .item-row-wrapper .item-row.need-to-buy:not(.packed) {
+    background: var(--orange-light);
+  }
+  .item-row-wrapper.swiping .item-row { transition: none; }
+
+  /* Hover trash (desktop) */
+  .item-actions .btn-trash {
+    display: none;
+    opacity: .4;
+  }
+  @media (hover: hover) {
+    .item-row:hover .item-actions .btn-trash { display: inline-block; }
+    .item-actions .btn-trash:hover { opacity: 1; }
+  }
+
+  /* ── Mode Tabs ── */
+  .mode-tabs {
+    display: flex;
+    margin-top: 10px;
+    background: rgba(255,255,255,.15);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .mode-tab {
+    flex: 1;
+    padding: 8px 0;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(255,255,255,.7);
+    cursor: pointer;
+    transition: all .2s;
+    border: none;
+    background: none;
+  }
+  .mode-tab.active {
+    background: rgba(255,255,255,.25);
+    color: #fff;
+  }
+
+  /* ── Shopping Mode Header Bar ── */
+  .shopping-header {
+    display: none;
+    padding: 12px 16px;
+    background: #fff;
+    border-bottom: 1px solid var(--snow-gray);
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .shopping-header.visible { display: flex; }
+  .shopping-header .shop-count {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--orange-buy);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .shopping-header .shop-actions { display: flex; gap: 8px; }
+  .shopping-header .shop-actions button {
+    padding: 7px 14px;
+    border: 1px solid var(--snow-gray);
+    border-radius: 20px;
+    background: #fff;
+    font-size: 12px;
+    cursor: pointer;
+    color: var(--blue-dark);
+    font-weight: 500;
+  }
+  .shopping-header .shop-actions button:active {
+    background: var(--blue-dark);
+    color: #fff;
+  }
+
+  /* ── Shopping Item Row ── */
+  .shop-item {
+    display: flex;
+    align-items: center;
+    padding: 14px 16px;
+    border-top: 1px solid #f0f2f5;
+    gap: 12px;
+    cursor: pointer;
+    transition: background .2s, opacity .2s;
+  }
+  .shop-item:active { background: #f0f4f8; }
+  .shop-item.purchasing {
+    opacity: .4;
+    background: var(--green-light);
+    transition: opacity .4s, background .4s;
+  }
+  .shop-checkbox {
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--orange-buy);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all .2s;
+  }
+  .shop-item.purchasing .shop-checkbox {
+    background: var(--green-packed);
+    border-color: var(--green-packed);
+  }
+  .shop-item.purchasing .shop-checkbox::after {
+    content: '✓';
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .shop-name {
+    flex: 1;
+    font-size: 15px;
+  }
+  .shop-qty {
+    font-size: 12px;
+    color: var(--gray-light);
+    background: var(--snow-gray);
+    padding: 2px 8px;
+    border-radius: 8px;
+    font-weight: 600;
+  }
+  .shop-cat-label {
+    font-size: 11px;
+    color: var(--gray-light);
+  }
+
+  /* ── Swipe-right needToBuy indicator ── */
+  .item-row-wrapper .swipe-buy-bg {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 80px;
+    background: var(--orange-buy);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 20px;
+  }
+
+  /* Quick cart toggle button in packing view */
+  .item-actions .btn-cart {
+    opacity: .35;
+    font-size: 14px;
+  }
+  .item-actions .btn-cart.on-list { opacity: 1; }
+
+  /* ── Progress Bar (global) ── */
+  .progress-section {
+    padding: 12px 16px;
+    background: #fff;
+    border-bottom: 1px solid var(--snow-gray);
+  }
+  .progress-section.hidden { display: none; }
+  .progress-text {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    color: var(--gray-text);
+    margin-bottom: 6px;
+  }
+  .progress-text strong { color: #333; }
+  .progress-buy-note {
+    font-size: 12px;
+    color: var(--orange-buy);
+    margin-top: 4px;
+  }
+  .global-progress {
+    height: 8px;
+    background: var(--snow-gray);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .global-progress-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width .5s ease, background .5s ease;
+  }
+  @media (min-width: 600px) {
+    .progress-section { max-width: 600px; margin: 0 auto; }
+  }
+
+  /* ── Settings Menu ── */
+  .settings-btn {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 22px;
+    cursor: pointer;
+    padding: 4px;
+    opacity: .8;
+    transition: opacity .15s;
+  }
+  .settings-btn:active { opacity: 1; }
+  .settings-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.4);
+    z-index: 220;
+    justify-content: flex-end;
+  }
+  .settings-overlay.open { display: flex; }
+  .settings-panel {
+    width: 280px;
+    max-width: 85vw;
+    background: #fff;
+    height: 100%;
+    box-shadow: -4px 0 20px rgba(0,0,0,.15);
+    padding: 20px;
+    animation: slideLeft .25s ease;
+    overflow-y: auto;
+  }
+  @keyframes slideLeft {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+  }
+  .settings-panel h3 {
+    font-size: 17px;
+    color: var(--blue-dark);
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .settings-panel h3 button {
+    background: none; border: none; font-size: 20px; cursor: pointer; color: var(--gray-light);
+  }
+  .settings-item {
+    padding: 14px 0;
+    border-bottom: 1px solid #f0f2f5;
+    cursor: pointer;
+  }
+  .settings-item:active { background: #f8f9fb; }
+  .settings-item .si-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .settings-item .si-desc {
+    font-size: 12px;
+    color: var(--gray-light);
+    margin-top: 3px;
+  }
+  .settings-item.danger .si-title { color: #c62828; }
+  .settings-toggle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 0;
+    border-bottom: 1px solid #f0f2f5;
+  }
+  .settings-toggle .si-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+  }
+  .toggle-switch {
+    width: 44px; height: 24px;
+    background: var(--snow-gray);
+    border-radius: 12px;
+    position: relative;
+    cursor: pointer;
+    transition: background .2s;
+  }
+  .toggle-switch.on { background: var(--green-packed); }
+  .toggle-switch::after {
+    content: '';
+    position: absolute;
+    width: 20px; height: 20px;
+    background: #fff;
+    border-radius: 50%;
+    top: 2px; left: 2px;
+    transition: transform .2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,.2);
+  }
+  .toggle-switch.on::after { transform: translateX(20px); }
+
+  /* ── Always Bring highlight ── */
+  .item-row.always-highlight {
+    border-left: 3px solid #f9a825;
+  }
+  .item-row.always-highlight:not(.packed) .item-name {
+    font-weight: 600;
+  }
+
+  /* ── Category slide-in ── */
+  @keyframes catFadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .category-group { animation: catFadeIn .3s ease both; }
+  .category-group:nth-child(2) { animation-delay: .05s; }
+  .category-group:nth-child(3) { animation-delay: .1s; }
+  .category-group:nth-child(4) { animation-delay: .15s; }
+  .category-group:nth-child(n+5) { animation-delay: .2s; }
+
+  /* ── Shop item slide-in ── */
+  .shop-item { animation: itemSlideIn .3s ease both; }
+
+  /* ── Pull to Refresh ── */
+  .pull-indicator {
+    text-align: center;
+    padding: 0;
+    height: 0;
+    overflow: hidden;
+    transition: height .2s, padding .2s;
+    color: var(--blue-mid);
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: var(--snow-white);
+  }
+  .pull-indicator.pulling { height: 44px; padding: 10px 0; }
+  .pull-indicator .pull-arrow {
+    transition: transform .2s;
+    font-size: 16px;
+  }
+  .pull-indicator.ready .pull-arrow { transform: rotate(180deg); }
+
+  /* ── All-Packed Celebration ── */
+  .celebration-state {
+    text-align: center;
+    padding: 50px 20px;
+    color: var(--green-packed);
+  }
+  .celebration-state .celeb-icon { font-size: 56px; margin-bottom: 12px; }
+  .celebration-state p { font-size: 17px; font-weight: 600; }
+  .celebration-state .celeb-sub { font-size: 13px; color: var(--gray-light); font-weight: 400; margin-top: 6px; }
+
+  /* ── Focus visible for keyboard nav ── */
+  *:focus-visible {
+    outline: 2px solid var(--blue-light);
+    outline-offset: 2px;
+  }
+  button:focus-visible, .filter-pill:focus-visible, .view-toggle:focus-visible, .mode-tab:focus-visible {
+    outline: 2px solid var(--blue-light);
+    outline-offset: 2px;
+  }
+
+  /* ── Ensure 44px touch targets ── */
+  .toolbar button { min-height: 44px; }
+  .filter-pill { min-height: 36px; display: inline-flex; align-items: center; }
+  .view-toggle { min-height: 36px; }
+  .mode-tab { min-height: 44px; }
+  .item-row { min-height: 48px; }
+  .shop-item { min-height: 48px; }
+  .item-actions button { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+  .settings-item { min-height: 48px; }
+  .fab { min-width: 56px; min-height: 56px; }
+
+  /* ── New Category Modal ── */
+  .new-cat-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.4);
+    z-index: 210;
+    align-items: center;
+    justify-content: center;
+  }
+  .new-cat-overlay.open { display: flex; }
+  .new-cat-modal {
+    background: #fff;
+    width: 90%;
+    max-width: 380px;
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.25);
+    animation: slideUp .25s ease;
+  }
+  .new-cat-modal h3 { font-size: 17px; color: var(--blue-dark); margin-bottom: 14px; }
+  .new-cat-modal label { display: block; font-size: 13px; color: var(--gray-text); margin-bottom: 4px; margin-top: 10px; }
+  .new-cat-modal input[type="text"] {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--snow-gray); border-radius: 8px; font-size: 15px; font-family: inherit;
+  }
+  .new-cat-modal .toggle-row {
+    display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 14px;
+  }
+  .new-cat-modal .toggle-row input { width: 18px; height: 18px; }
+
+  /* ── Home Screen ── */
+  .home-screen {
+    display: none;
+    padding: 20px 16px 100px;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  .home-screen.active { display: block; }
+  .home-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--blue-dark);
+    margin-bottom: 16px;
+  }
+  .trip-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  @media (max-width: 360px) {
+    .trip-grid { grid-template-columns: 1fr; }
+  }
+  .trip-card {
+    background: #fff;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform .15s, box-shadow .15s;
+    position: relative;
+  }
+  .trip-card:active { transform: scale(.97); }
+  .trip-card-accent {
+    height: 6px;
+    background: var(--blue-dark);
+  }
+  .trip-card-body {
+    padding: 14px;
+  }
+  .trip-card-icon {
+    font-size: 32px;
+    margin-bottom: 6px;
+  }
+  .trip-card-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 6px;
+    word-break: break-word;
+  }
+  .trip-card-stats {
+    font-size: 12px;
+    color: var(--gray-light);
+  }
+  .trip-card-menu {
+    position: absolute;
+    top: 10px;
+    right: 8px;
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    opacity: .5;
+    padding: 4px;
+    z-index: 2;
+  }
+  .trip-card-menu:active { opacity: 1; }
+  .home-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--gray-light);
+  }
+  .home-empty .home-empty-icon { font-size: 48px; margin-bottom: 12px; }
+  .home-empty p { font-size: 15px; }
+
+  /* ── Trip View Container ── */
+  .trip-view { display: none; }
+  .trip-view.active { display: block; }
+
+  /* ── Back button in header ── */
+  .header-back-btn {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 22px;
+    cursor: pointer;
+    padding: 4px 8px 4px 0;
+    opacity: .9;
+    display: none;
+  }
+  .header-back-btn:active { opacity: 1; }
+  .header-back-btn.visible { display: inline-block; }
+
+  /* ── FAB for home screen ── */
+  .fab-create-trip {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 150;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--blue-dark);
+    color: #fff;
+    border: none;
+    font-size: 28px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,.25);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    transition: transform .15s;
+  }
+  .fab-create-trip:active { transform: scale(.92); }
+  .fab-create-trip.visible { display: flex; }
+
+  /* ── Hide trip-specific UI on home ── */
+  body.on-home .filter-bar,
+  body.on-home .view-toggles,
+  body.on-home .progress-section,
+  body.on-home .fab-container,
+  body.on-home .shopping-header,
+  body.on-home .mode-tabs,
+  body.on-home .header-stats,
+  body.on-home #pullIndicator { display: none !important; }
+
+  /* ── Create Trip Modal ── */
+  .create-trip-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.4);
+    z-index: 210;
+    align-items: center;
+    justify-content: center;
+  }
+  .create-trip-overlay.open { display: flex; }
+  .create-trip-modal {
+    background: #fff;
+    width: 90%;
+    max-width: 400px;
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.25);
+    animation: slideUp .25s ease;
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+  .create-trip-modal h3 { font-size: 17px; color: var(--blue-dark); margin-bottom: 14px; }
+  .create-trip-modal label { display: block; font-size: 13px; color: var(--gray-text); margin-bottom: 4px; margin-top: 10px; }
+  .create-trip-modal input[type="text"] {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--snow-gray); border-radius: 8px; font-size: 15px; font-family: inherit;
+  }
+  .icon-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 6px;
+  }
+  .icon-pick {
+    width: 40px; height: 40px;
+    border-radius: 8px;
+    border: 2px solid var(--snow-gray);
+    background: #fff;
+    font-size: 22px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all .15s;
+  }
+  .icon-pick.selected { border-color: var(--blue-mid); background: #e8f0fe; }
+  .color-picker {
+    display: flex;
+    gap: 8px;
+    margin-top: 6px;
+  }
+  .color-pick {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    cursor: pointer;
+    transition: border-color .15s, transform .15s;
+  }
+  .color-pick.selected { border-color: #333; transform: scale(1.15); }
+  .clone-section {
+    margin-top: 12px;
+    padding: 10px;
+    background: #f8f9fb;
+    border-radius: 8px;
+  }
+  .clone-section label { margin-top: 0; }
+  .clone-section select {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--snow-gray); border-radius: 8px; font-size: 14px; margin-top: 6px;
+  }
+
+  /* ── Trip Settings Modal (bottom sheet) ── */
+  .trip-settings-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.4);
+    z-index: 220;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .trip-settings-overlay.open { display: flex; }
+  .trip-settings-sheet {
+    background: #fff;
+    width: 100%;
+    max-width: 500px;
+    border-radius: 16px 16px 0 0;
+    padding: 20px;
+    animation: slideUp .25s ease;
+  }
+  .trip-settings-sheet h3 { font-size: 17px; color: var(--blue-dark); margin-bottom: 14px; }
+  .trip-settings-sheet .settings-item { cursor: pointer; padding: 14px 0; border-bottom: 1px solid #f0f2f5; }
+  .trip-settings-sheet .settings-item:active { background: #f8f9fb; }
+  .trip-settings-sheet .settings-item .si-title { font-size: 14px; font-weight: 600; color: #333; display: flex; align-items: center; gap: 8px; }
+  .trip-settings-sheet .settings-item .si-desc { font-size: 12px; color: var(--gray-light); margin-top: 3px; }
+  .trip-settings-sheet .settings-item.danger .si-title { color: #c62828; }
+
+  /* ── Route transition ── */
+  @keyframes viewFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .view-fade-in { animation: viewFadeIn .2s ease; }
+
+  /* ── Responsive ── */
+  @media (min-width: 600px) {
+    .category-group { margin: 16px auto; max-width: 600px; }
+    .import-section { margin: 16px auto; max-width: 600px; }
+    .toolbar { justify-content: center; }
+    .filter-bar { justify-content: center; }
+    .modal { border-radius: 16px; margin-bottom: 40px; }
+    .modal-overlay { align-items: center; }
+  }
+
+  /* ── Grid View: Category Dashboard ── */
+  .category-dashboard {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    padding: 12px;
+  }
+  @media (min-width: 600px) {
+    .category-dashboard { grid-template-columns: repeat(3, 1fr); max-width: 900px; margin: 0 auto; }
+  }
+  @media (min-width: 900px) {
+    .category-dashboard { grid-template-columns: repeat(4, 1fr); max-width: 1200px; }
+  }
+  .category-card {
+    background: #fff;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px;
+    cursor: pointer;
+    transition: transform .15s, box-shadow .15s;
+    text-align: center;
+  }
+  .category-card:active { transform: scale(.97); }
+  .category-card-icon { font-size: 32px; margin-bottom: 6px; }
+  .category-card-name { font-size: 14px; font-weight: 600; color: var(--blue-dark); margin-bottom: 4px; }
+  .category-card-count { font-size: 12px; color: var(--gray-text, var(--gray-light)); margin-bottom: 8px; }
+  .category-card-progress { height: 4px; background: var(--snow-gray); border-radius: 2px; overflow: hidden; }
+  .category-card-progress-fill { height: 100%; background: var(--green-packed); transition: width .3s; }
+
+  /* ── Grid View: Expanded Category ── */
+  .category-expanded-header {
+    position: sticky;
+    top: 0;
+    background: #fff;
+    border-bottom: 1px solid var(--snow-gray);
+    padding: 10px 16px;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,.06);
+  }
+  .category-back-btn {
+    background: none; border: none; font-size: 22px; cursor: pointer;
+    padding: 4px 8px; color: var(--blue-dark); border-radius: 8px;
+  }
+  .category-back-btn:active { background: var(--snow-gray); }
+  .category-expanded-title {
+    flex: 1; display: flex; align-items: center; gap: 6px;
+    font-size: 17px; font-weight: 600; color: var(--blue-dark);
+  }
+  .category-expanded-count { font-size: 13px; color: var(--gray-light); white-space: nowrap; }
+
+  /* ── Grid View: Item Cards ── */
+  .items-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    padding: 12px;
+  }
+  @media (min-width: 600px) {
+    .items-grid { grid-template-columns: repeat(3, 1fr); max-width: 900px; margin: 0 auto; }
+  }
+  @media (min-width: 900px) {
+    .items-grid { grid-template-columns: repeat(4, 1fr); max-width: 1200px; }
+  }
+  .item-card {
+    background: #fff; border-radius: 8px; border: 1px solid #e8eaed;
+    padding: 8px 10px; cursor: pointer; transition: background .2s, border-color .2s;
+    position: relative; display: flex; flex-direction: column; min-height: 56px;
+  }
+  .item-card.packed { background: var(--green-light); border-color: var(--green-packed); }
+  .item-card.need-to-buy:not(.packed) { border-left: 3px solid var(--orange-buy); background: var(--orange-light); }
+  .item-card.always-highlight:not(.packed) { border-left: 3px solid #f9a825; }
+  .item-card:active { background: #f0f4f8; }
+
+  .item-card-top { display: flex; align-items: flex-start; gap: 6px; }
+  .item-card-checkbox {
+    width: 20px; height: 20px; border: 2px solid var(--gray-light);
+    border-radius: 50%; flex-shrink: 0; display: flex;
+    align-items: center; justify-content: center; margin-top: 1px;
+  }
+  .item-card.packed .item-card-checkbox {
+    background: var(--green-packed); border-color: var(--green-packed);
+  }
+  .item-card.packed .item-card-checkbox::after { content: '\2713'; color: #fff; font-size: 12px; font-weight: 700; }
+  .item-card-name {
+    flex: 1; font-size: 13px; line-height: 1.3; color: #333;
+    overflow: hidden; text-overflow: ellipsis;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  }
+  .item-card.packed .item-card-name { color: var(--gray-light); text-decoration: line-through; }
+
+  .item-card-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 3px; }
+  .item-card-qty { font-size: 11px; color: var(--gray-light); background: var(--snow-gray); padding: 1px 6px; border-radius: 6px; font-weight: 600; }
+  .item-card-indicators { display: flex; gap: 3px; font-size: 12px; }
+
+  .item-card-actions {
+    position: absolute; top: 0; right: 0; bottom: 0; left: 0;
+    background: rgba(0,0,0,.75); border-radius: 8px;
+    display: none; flex-direction: column; align-items: center; justify-content: center; gap: 8px; z-index: 10;
+  }
+  .item-card.show-actions .item-card-actions { display: flex; }
+  .item-card-actions-row {
+    display: flex; gap: 10px; align-items: center;
+  }
+  .item-card-actions button {
+    background: #fff; border: none; border-radius: 50%;
+    width: 38px; height: 38px; font-size: 16px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .item-card-actions button:active { transform: scale(.9); }
+  .item-card-actions select {
+    background: #fff; border: none; border-radius: 6px;
+    padding: 4px 8px; font-size: 12px; cursor: pointer; max-width: 140px;
+  }
+
+  .person-subgroup-grid .person-header {
+    padding: 6px 12px; margin: 0 12px 4px; font-size: 13px; font-weight: 600; color: var(--blue-dark);
+  }
+  .person-subgroup-grid .person-count { font-weight: 400; color: var(--gray-light); font-size: 12px; }
+
+  /* View mode toggle */
+  .view-mode-toggle {
+    background: none; border: 1px solid #d0d5dd; border-radius: 6px;
+    padding: 4px 10px; font-size: 12px; cursor: pointer; color: var(--gray-light);
+  }
+  .view-mode-toggle:active { background: var(--snow-gray); }
+</style>
+</head>
+<body>
+
+<!-- ── Loading Screen ── -->
+<div class="loading-screen" id="loadingScreen">
+  <div class="loading-icon">🧳</div>
+  <div class="loading-title">Gabriel Family Trip Planner</div>
+  <div class="loading-sub">Loading your trips...</div>
+  <div class="loading-spinner"></div>
+</div>
+
+<!-- ── Header ── -->
+<header role="banner">
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div style="display:flex;align-items:center;">
+      <button class="header-back-btn" id="headerBackBtn" onclick="navigate('/')" aria-label="Back to trips">←</button>
+      <h1><span class="mountain" aria-hidden="true" id="headerIcon">🧳</span> <span id="headerTitleText">Gabriel Family Trips</span></h1>
+    </div>
+    <button class="settings-btn" onclick="openSettings()" aria-label="Open settings menu">⚙️</button>
+  </div>
+  <div class="header-stats" id="headerStats" aria-live="polite">
+    <span id="stat-total">0 items</span>
+    <span aria-hidden="true">·</span>
+    <span id="stat-packed">0 packed</span>
+    <span aria-hidden="true">·</span>
+    <span id="stat-buy" style="color:#ffb74d">0 to buy</span>
+  </div>
+  <nav class="mode-tabs" aria-label="View mode">
+    <button class="mode-tab active" id="tabPacking" onclick="switchMode('packing')" aria-pressed="true">📦 Packing List</button>
+    <button class="mode-tab" id="tabShopping" onclick="switchMode('shopping')" aria-pressed="false">🛒 Shopping List</button>
+  </nav>
+</header>
+
+<!-- ── Offline / Sync Banners ── -->
+<div class="offline-banner" id="offlineBanner" role="alert" aria-live="assertive">
+  <span class="offline-icon" aria-hidden="true">📡</span> You're offline. Changes will sync when connected.
+</div>
+<div class="sync-banner" id="syncBanner" role="status" aria-live="polite">
+  <span aria-hidden="true">🔄</span> <span id="syncText">Syncing...</span>
+</div>
+
+<!-- ── Home Screen ── -->
+<div class="home-screen" id="homeScreen">
+  <div class="home-title">Your Trips</div>
+  <div class="trip-grid" id="tripGrid"></div>
+  <div class="home-empty" id="homeEmpty" style="display:none;">
+    <div class="home-empty-icon">🧳</div>
+    <p>No trips yet.<br>Tap + to create your first trip.</p>
+  </div>
+</div>
+
+<!-- ── Trip View (wraps all trip-specific content) ── -->
+<div class="trip-view" id="tripView">
+
+<!-- ── Shopping Header Bar ── -->
+<div class="shopping-header" id="shoppingHeader">
+  <div class="shop-count">🛒 <span id="shopCount">0</span> items to buy</div>
+  <div class="shop-actions">
+    <button onclick="shareShoppingList()">📋 Share List</button>
+  </div>
+</div>
+
+<!-- ── Progress Section ── -->
+<div class="progress-section" id="progressSection" aria-live="polite">
+  <div class="progress-text">
+    <span><strong id="progressPacked">0</strong> of <strong id="progressTotal">0</strong> items packed</span>
+    <span id="progressPct">0%</span>
+  </div>
+  <div class="global-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progressBarEl">
+    <div class="global-progress-fill" id="progressFill" style="width:0%;background:#c62828;"></div>
+  </div>
+  <div class="progress-buy-note" id="progressBuyNote" style="display:none;">🛒 <span id="progressBuyCount">0</span> items to buy</div>
+</div>
+
+<!-- ── Settings Panel ── -->
+<div class="settings-overlay" id="settingsOverlay" onclick="closeSettings(event)">
+  <div class="settings-panel" onclick="event.stopPropagation()">
+    <h3>Settings <button onclick="closeSettings()">✕</button></h3>
+    <div class="settings-item" onclick="resetForNextTrip()">
+      <div class="si-title">🔄 Reset for Next Trip</div>
+      <div class="si-desc">Unpack all items. Saves a snapshot you can undo.</div>
+    </div>
+    <div class="settings-item" id="undoResetItem" style="display:none;" onclick="undoLastReset()">
+      <div class="si-title">↩️ Undo Last Reset</div>
+      <div class="si-desc" id="undoResetDesc">Restore packed states from last reset</div>
+    </div>
+    <div class="settings-toggle">
+      <div class="si-title">⭐ Sort Always Bring to Top</div>
+      <div class="toggle-switch" id="toggleAlwaysTop" onclick="toggleAlwaysBringSort()"></div>
+    </div>
+    <div class="settings-item" onclick="closeSettings(); toggleImport();">
+      <div class="si-title">📋 Import Items</div>
+      <div class="si-desc">Import from text, markdown, or Google Docs</div>
+    </div>
+    <div class="settings-item" id="familySiteLink" style="display:none;" onclick="goToFamilySite()">
+      <div class="si-title">🏠 Back to Family Site</div>
+      <div class="si-desc" id="familySiteLinkDesc"></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ── Import Section ── -->
+<div class="import-section" id="importSection">
+  <h3>Import Items</h3>
+  <p style="font-size:13px;color:var(--gray-light);margin-bottom:8px;">
+    Paste a list, markdown with # headers, or a Google Docs URL.<br>
+    Supports: "2x Jackets", "3 - Beer", "Socks (x4)", or upload a .md file.
+  </p>
+  <div style="margin-bottom:8px;">
+    <label style="display:inline-block;padding:6px 14px;border-radius:8px;background:var(--primary);color:#fff;cursor:pointer;font-size:14px;">
+      📁 Upload File
+      <input type="file" accept=".md,.txt,.markdown" style="display:none;" onchange="handleFileImport(this)">
+    </label>
+  </div>
+  <textarea id="importText" placeholder="Paste items here, one per line...&#10;&#10;2x Jackets&#10;3 - Beer&#10;Ski goggles&#10;&#10;Or paste markdown with # Category headers&#10;Or paste a Google Docs URL"></textarea>
+  <div class="import-controls">
+    <button class="btn-primary" style="padding:8px 18px;border-radius:8px;" onclick="detectAndFetchSource()">Preview Items</button>
+  </div>
+</div>
+
+<!-- ── Import Preview Modal ── -->
+<div class="import-overlay" id="importOverlay" onclick="closeImportPreview(event)">
+  <div class="import-modal" onclick="event.stopPropagation()">
+    <div class="import-modal-header">
+      <h3>Review Import (<span id="importCount">0</span> items)</h3>
+      <button class="close-btn" onclick="closeImportPreview()">&times;</button>
+    </div>
+    <div class="import-bulk-bar">
+      <span><strong id="selectedCount">0</strong> selected</span>
+      <select id="bulkCategory">
+        <option value="">Set Category...</option>
+        <option value="Refrigerated Foods">Refrigerated Foods</option>
+        <option value="Dry Foods">Dry Foods</option>
+        <option value="Clothes and Gear">Clothes and Gear</option>
+        <option value="Toiletries">Toiletries</option>
+        <option value="Miscellaneous">Miscellaneous</option>
+        <option value="To Do">To Do</option>
+      </select>
+      <select id="bulkPerson" style="display:none;">
+        <option value="">Assign to...</option>
+        <option value="Greg">Greg</option>
+        <option value="Danielle">Danielle</option>
+        <option value="Helena">Helena</option>
+        <option value="Maria">Maria</option>
+      </select>
+      <button onclick="applyBulk()">Apply</button>
+      <div class="select-actions">
+        <button onclick="selectAllImport()">All</button>
+        <button onclick="selectNoneImport()">None</button>
+      </div>
+    </div>
+    <div class="import-modal-body" id="importPreviewList"></div>
+    <div class="import-modal-footer">
+      <span id="importDupWarning" style="font-size:12px;color:var(--orange-buy);display:none;">
+        Duplicates will be skipped
+      </span>
+      <div style="display:flex;gap:10px;margin-left:auto;">
+        <button class="btn-secondary" style="padding:10px 20px;border-radius:8px;border:none;font-size:14px;font-weight:600;cursor:pointer;" onclick="closeImportPreview()">Cancel</button>
+        <button class="btn-primary" style="padding:10px 20px;border-radius:8px;border:none;font-size:14px;font-weight:600;cursor:pointer;" onclick="confirmImport()">Import All</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Filter Bar ── -->
+<div class="filter-bar" role="toolbar" aria-label="Category filters">
+  <button class="filter-pill active" onclick="filterCategory('all', this)" aria-pressed="true">All Categories</button>
+  <button class="filter-pill" onclick="filterCategory('Refrigerated Foods', this)">🧊 Fridge</button>
+  <button class="filter-pill" onclick="filterCategory('Dry Foods', this)">🥫 Dry</button>
+  <button class="filter-pill" onclick="filterCategory('Clothes and Gear', this)">👕 Clothes</button>
+  <button class="filter-pill" onclick="filterCategory('Miscellaneous', this)">📦 Misc</button>
+</div>
+
+<!-- ── View Toggles ── -->
+<div class="view-toggles" role="group" aria-label="View filters">
+  <div class="view-toggle" id="toggleUnpacked" onclick="toggleViewFilter('unpacked', this)" role="switch" aria-checked="false" tabindex="0" aria-label="Show unpacked only">
+    <span class="toggle-dot" aria-hidden="true"></span> Unpacked
+  </div>
+  <div class="view-toggle" id="toggleAllItems" onclick="toggleViewFilter('allitems', this)" role="switch" aria-checked="false" tabindex="0" aria-label="Show all items">
+    <span class="toggle-dot" aria-hidden="true"></span> 📝 Full List
+  </div>
+  <select class="person-filter-select" id="personFilter" onchange="applyFilters()" aria-label="Filter by family member">
+    <option value="">All people</option>
+    <option value="Greg">Greg</option>
+    <option value="Danielle">Danielle</option>
+    <option value="Helena">Helena</option>
+    <option value="Maria">Maria</option>
+  </select>
+</div>
+
+<!-- ── Pull to Refresh ── -->
+<div class="pull-indicator" id="pullIndicator">
+  <span class="pull-arrow" aria-hidden="true">↓</span>
+  <span id="pullText">Pull to refresh</span>
+</div>
+
+<!-- ── Main Content ── -->
+<main id="mainContent" role="main" aria-label="Packing list items">
+  <div class="empty-state" id="emptyState">
+    <div class="mountain-icon" aria-hidden="true">🏔️</div>
+    <p>No items yet.<br>Paste a list or tap + to add items.</p>
+  </div>
+</main>
+
+<!-- ── FAB ── -->
+<div class="fab-container">
+  <button class="fab" onclick="openAddModal()" aria-label="Add item">+</button>
+</div>
+
+</div><!-- /tripView -->
+
+<!-- ── Home FAB ── -->
+<button class="fab-create-trip" id="fabCreateTrip" onclick="openCreateTripModal()" aria-label="Create trip">+</button>
+
+<!-- ── Create Trip Modal ── -->
+<div class="create-trip-overlay" id="createTripOverlay" onclick="closeCreateTripModal(event)">
+  <div class="create-trip-modal" onclick="event.stopPropagation()">
+    <h3 id="createTripTitle">Create New Trip</h3>
+    <label>Trip Name</label>
+    <input type="text" id="createTripName" placeholder="e.g. Mammoth Winter 2026" autocomplete="off">
+    <label>Icon</label>
+    <div class="icon-picker" id="iconPicker">
+      <button class="icon-pick selected" data-icon="🏔️" onclick="pickIcon(this)">🏔️</button>
+      <button class="icon-pick" data-icon="❄️" onclick="pickIcon(this)">❄️</button>
+      <button class="icon-pick" data-icon="🏖️" onclick="pickIcon(this)">🏖️</button>
+      <button class="icon-pick" data-icon="🌲" onclick="pickIcon(this)">🌲</button>
+      <button class="icon-pick" data-icon="✈️" onclick="pickIcon(this)">✈️</button>
+      <button class="icon-pick" data-icon="🚗" onclick="pickIcon(this)">🚗</button>
+      <button class="icon-pick" data-icon="🏕️" onclick="pickIcon(this)">🏕️</button>
+      <button class="icon-pick" data-icon="🎿" onclick="pickIcon(this)">🎿</button>
+      <button class="icon-pick" data-icon="🌴" onclick="pickIcon(this)">🌴</button>
+      <button class="icon-pick" data-icon="🧳" onclick="pickIcon(this)">🧳</button>
+    </div>
+    <label>Color</label>
+    <div class="color-picker" id="colorPicker">
+      <div class="color-pick selected" data-color="#1a3a5c" style="background:#1a3a5c" onclick="pickColor(this)"></div>
+      <div class="color-pick" data-color="#2e7d32" style="background:#2e7d32" onclick="pickColor(this)"></div>
+      <div class="color-pick" data-color="#c62828" style="background:#c62828" onclick="pickColor(this)"></div>
+      <div class="color-pick" data-color="#ef6c00" style="background:#ef6c00" onclick="pickColor(this)"></div>
+      <div class="color-pick" data-color="#6a1b9a" style="background:#6a1b9a" onclick="pickColor(this)"></div>
+      <div class="color-pick" data-color="#00838f" style="background:#00838f" onclick="pickColor(this)"></div>
+    </div>
+    <div class="clone-section" id="cloneSection">
+      <label style="margin:0;display:flex;align-items:center;gap:6px;font-size:14px;color:#333;">
+        <input type="checkbox" id="cloneCheckbox" onchange="toggleCloneSelect()" style="width:18px;height:18px;">
+        Clone items from existing trip
+      </label>
+      <select id="cloneSourceTrip" style="display:none;"></select>
+    </div>
+    <div class="modal-buttons" style="margin-top:16px;">
+      <button class="btn-secondary" onclick="closeCreateTripModal()">Cancel</button>
+      <button class="btn-primary" onclick="saveTrip()">Create Trip</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Trip Settings Modal ── -->
+<div class="trip-settings-overlay" id="tripSettingsOverlay" onclick="closeTripSettings(event)">
+  <div class="trip-settings-sheet" onclick="event.stopPropagation()">
+    <h3>Trip Options</h3>
+    <div class="settings-item" onclick="renameTripPrompt()">
+      <div class="si-title">✏️ Rename Trip</div>
+    </div>
+    <div class="settings-item" onclick="changeIconColorPrompt()">
+      <div class="si-title">🎨 Change Icon & Color</div>
+    </div>
+    <div class="settings-item" onclick="cloneTripPrompt()">
+      <div class="si-title">📋 Clone Trip</div>
+    </div>
+    <div class="settings-item danger" onclick="deleteTripConfirm()">
+      <div class="si-title">🗑️ Delete Trip</div>
+      <div class="si-desc">Permanently remove this trip and all its items</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Add/Edit Modal ── -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3 id="modalTitle">Add Item</h3>
+    <label>Item Name</label>
+    <input type="text" id="itemName" placeholder="e.g. Snow boots" autocomplete="off">
+    <div style="display:flex;gap:10px;">
+      <div style="flex:1">
+        <label>Category</label>
+        <select id="itemCategory" onchange="onCategoryChange()">
+        </select>
+      </div>
+      <div style="flex:1">
+        <label>Quantity</label>
+        <input type="number" id="itemQty" value="1" min="1">
+      </div>
+    </div>
+    <div id="assignmentField" style="display:none;">
+      <label>Assign To</label>
+      <select id="itemAssign">
+        <option value="">Unassigned</option>
+        <option value="Greg">Greg</option>
+        <option value="Danielle">Danielle</option>
+        <option value="Helena">Helena</option>
+        <option value="Maria">Maria</option>
+      </select>
+    </div>
+    <div class="checkbox-row">
+      <label><input type="checkbox" id="itemBuy"> 🛒 Need to Buy</label>
+      <label><input type="checkbox" id="itemAlways"> ⭐ Always Bring</label>
+    </div>
+    <div class="modal-buttons">
+      <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn-danger" id="deleteBtn" style="display:none;" onclick="deleteItem()">Delete</button>
+      <button class="btn-save-another" id="saveAnotherBtn" onclick="saveItem(true)">Save &amp; Add Another</button>
+      <button class="btn-primary" onclick="saveItem(false)">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── New Category Modal ── -->
+<div class="new-cat-overlay" id="newCatOverlay" onclick="closeNewCatModal(event)">
+  <div class="new-cat-modal" onclick="event.stopPropagation()">
+    <h3>Add New Category</h3>
+    <label>Category Name</label>
+    <input type="text" id="newCatName" placeholder="e.g. Cooking Supplies" autocomplete="off">
+    <label>Icon (emoji, optional)</label>
+    <input type="text" id="newCatIcon" placeholder="e.g. 🍳" maxlength="4" style="width:80px;">
+    <div class="toggle-row">
+      <input type="checkbox" id="newCatAssign">
+      <span>Requires family member assignment</span>
+    </div>
+    <div class="modal-buttons" style="margin-top:16px;">
+      <button class="btn-secondary" onclick="closeNewCatModal()">Cancel</button>
+      <button class="btn-primary" onclick="saveNewCategory()">Add Category</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Toast ── -->
+<div class="toast" id="toast"></div>
+
+<!-- ── Firebase SDK ── -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+// ══════════════════════════════════════════
+// FIREBASE CONFIGURATION
+// ══════════════════════════════════════════
+// 1. Go to Firebase Console (console.firebase.google.com)
+// 2. Create a new project or select existing
+// 3. Go to Project Settings > General > Your Apps > Web
+// 4. Click "Add app" (web icon </>) and register the app
+// 5. Copy the config object and paste below:
+//
+// IMPORTANT: Also set up Realtime Database:
+// 1. In Firebase Console, go to "Build" > "Realtime Database"
+// 2. Click "Create Database" and choose your region
+// 3. Start in "Test mode" for development, then apply rules below
+//
+// DATABASE RULES (paste in Firebase Console > Realtime Database > Rules):
+// {
+//   "rules": {
+//     ".read": true,
+//     ".write": true
+//   }
+// }
+// NOTE: These rules allow open access. For production/family-only access,
+// set up Firebase Authentication and use rules like:
+// {
+//   "rules": {
+//     ".read": "auth != null",
+//     ".write": "auth != null"
+//   }
+// }
+// ══════════════════════════════════════════
+
+// ══════════════════════════════════════════
+// FAMILY SITE LINK (optional)
+// ══════════════════════════════════════════
+// Set this to your family website URL to show a "Back to Family Site" link in Settings.
+// Leave empty string to hide the link.
+const FAMILY_SITE_URL = "";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBMPWTiaRA6oN563V8L7i2r3JSoodPzMsI",
+  authDomain: "trip-planner-4e77a.firebaseapp.com",
+  databaseURL: "https://trip-planner-4e77a-default-rtdb.firebaseio.com",
+  projectId: "trip-planner-4e77a",
+  storageBucket: "trip-planner-4e77a.firebasestorage.app",
+  messagingSenderId: "246646323322",
+  appId: "1:246646323322:web:d28d26dd52befb6f84e3c3"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// ══════════════════════════════════════════
+// App State
+// ══════════════════════════════════════════
+const FAMILY = ['Greg', 'Danielle', 'Helena', 'Maria'];
+const DEFAULT_CATEGORIES = [
+  { name: 'Refrigerated Foods', icon: '🧊', requiresAssignment: false },
+  { name: 'Dry Foods', icon: '🥫', requiresAssignment: false },
+  { name: 'Clothes and Gear', icon: '👕', requiresAssignment: true },
+  { name: 'Toiletries', icon: '🧴', requiresAssignment: false },
+  { name: 'Miscellaneous', icon: '📦', requiresAssignment: false },
+  { name: 'To Do', icon: '✅', requiresAssignment: false }
+];
+let CATEGORIES = [...DEFAULT_CATEGORIES];
+
+const ITEM_CATEGORY_MAP = {
+  // Refrigerated Foods
+  'milk': 'Refrigerated Foods', 'cheese': 'Refrigerated Foods', 'yogurt': 'Refrigerated Foods',
+  'butter': 'Refrigerated Foods', 'cream': 'Refrigerated Foods', 'egg': 'Refrigerated Foods',
+  'juice': 'Refrigerated Foods', 'deli': 'Refrigerated Foods', 'bacon': 'Refrigerated Foods',
+  'sausage': 'Refrigerated Foods', 'chicken': 'Refrigerated Foods', 'beef': 'Refrigerated Foods',
+  'steak': 'Refrigerated Foods', 'ground meat': 'Refrigerated Foods', 'ham': 'Refrigerated Foods',
+  'turkey': 'Refrigerated Foods', 'fish': 'Refrigerated Foods', 'salmon': 'Refrigerated Foods',
+  'shrimp': 'Refrigerated Foods', 'fruit': 'Refrigerated Foods', 'berries': 'Refrigerated Foods',
+  'lettuce': 'Refrigerated Foods', 'salad': 'Refrigerated Foods', 'hummus': 'Refrigerated Foods',
+  'dip': 'Refrigerated Foods', 'cold cut': 'Refrigerated Foods', 'hot dog': 'Refrigerated Foods',
+  'beer': 'Refrigerated Foods', 'wine': 'Refrigerated Foods', 'soda': 'Refrigerated Foods',
+  'water bottle': 'Refrigerated Foods', 'creamer': 'Refrigerated Foods',
+  // Dry Foods
+  'bread': 'Dry Foods', 'cereal': 'Dry Foods', 'granola': 'Dry Foods', 'oatmeal': 'Dry Foods',
+  'pasta': 'Dry Foods', 'rice': 'Dry Foods', 'chips': 'Dry Foods', 'crackers': 'Dry Foods',
+  'cookie': 'Dry Foods', 'snack': 'Dry Foods', 'nuts': 'Dry Foods', 'trail mix': 'Dry Foods',
+  'peanut butter': 'Dry Foods', 'jelly': 'Dry Foods', 'jam': 'Dry Foods', 'syrup': 'Dry Foods',
+  'pancake': 'Dry Foods', 'waffle': 'Dry Foods', 'coffee': 'Dry Foods', 'tea': 'Dry Foods',
+  'hot chocolate': 'Dry Foods', 'cocoa': 'Dry Foods', 'sugar': 'Dry Foods', 'flour': 'Dry Foods',
+  'oil': 'Dry Foods', 'vinegar': 'Dry Foods', 'spice': 'Dry Foods', 'seasoning': 'Dry Foods',
+  'salt': 'Dry Foods', 'pepper': 'Dry Foods', 'ketchup': 'Dry Foods', 'mustard': 'Dry Foods',
+  'sauce': 'Dry Foods', 'can of': 'Dry Foods', 'canned': 'Dry Foods', 'soup': 'Dry Foods',
+  'tortilla': 'Dry Foods', 'bun': 'Dry Foods', 'marshmallow': 'Dry Foods', 's\'more': 'Dry Foods',
+  // Clothes and Gear
+  'jacket': 'Clothes and Gear', 'coat': 'Clothes and Gear', 'pants': 'Clothes and Gear',
+  'jeans': 'Clothes and Gear', 'shirt': 'Clothes and Gear', 'shorts': 'Clothes and Gear',
+  'sock': 'Clothes and Gear', 'underwear': 'Clothes and Gear', 'boot': 'Clothes and Gear',
+  'shoe': 'Clothes and Gear', 'glove': 'Clothes and Gear', 'hat': 'Clothes and Gear',
+  'beanie': 'Clothes and Gear', 'scarf': 'Clothes and Gear', 'sweater': 'Clothes and Gear',
+  'hoodie': 'Clothes and Gear', 'fleece': 'Clothes and Gear', 'vest': 'Clothes and Gear',
+  'pajama': 'Clothes and Gear', 'swimsuit': 'Clothes and Gear', 'goggles': 'Clothes and Gear',
+  'helmet': 'Clothes and Gear', 'ski': 'Clothes and Gear', 'snowboard': 'Clothes and Gear',
+  'pole': 'Clothes and Gear', 'backpack': 'Clothes and Gear', 'sleeping bag': 'Clothes and Gear',
+  'tent': 'Clothes and Gear', 'hiking': 'Clothes and Gear', 'base layer': 'Clothes and Gear',
+  'thermal': 'Clothes and Gear', 'bib': 'Clothes and Gear', 'neck gaiter': 'Clothes and Gear',
+  'sunglasses': 'Clothes and Gear', 'sandal': 'Clothes and Gear', 'slipper': 'Clothes and Gear',
+  'bathing suit': 'Clothes and Gear', 'rain': 'Clothes and Gear', 'puffy': 'Clothes and Gear',
+  // Toiletries
+  'toothbrush': 'Toiletries', 'toothpaste': 'Toiletries', 'floss': 'Toiletries',
+  'shampoo': 'Toiletries', 'conditioner': 'Toiletries', 'body wash': 'Toiletries',
+  'soap': 'Toiletries', 'deodorant': 'Toiletries', 'lotion': 'Toiletries',
+  'sunscreen': 'Toiletries', 'chapstick': 'Toiletries', 'lip balm': 'Toiletries',
+  'razor': 'Toiletries', 'shaving': 'Toiletries', 'comb': 'Toiletries',
+  'brush': 'Toiletries', 'hair': 'Toiletries', 'nail clip': 'Toiletries',
+  'cotton': 'Toiletries', 'q-tip': 'Toiletries', 'band-aid': 'Toiletries',
+  'medicine': 'Toiletries', 'advil': 'Toiletries', 'tylenol': 'Toiletries',
+  'ibuprofen': 'Toiletries', 'allergy': 'Toiletries', 'vitamin': 'Toiletries',
+  'contact': 'Toiletries', 'glasses': 'Toiletries', 'retainer': 'Toiletries',
+  'mouthwash': 'Toiletries', 'face wash': 'Toiletries', 'moisturizer': 'Toiletries',
+};
+
+// Patterns that indicate a to-do/task item rather than a physical item
+const TODO_PATTERNS = [
+  /^(gas |fill |fuel )/i, /\bto car\b/i, /\bto trunk\b/i,
+  /^(check |verify |confirm |call |email |text |send |schedule |book |reserve |cancel )/i,
+  /^(buy |get |pick up |grab |order |return |drop off |mail )/i,
+  /^(clean |wash |wipe |scrub |vacuum |sweep |mop )/i,
+  /^(charge |load |download |update |install |sync |backup )/i,
+  /^(close |open |lock |unlock |turn off |turn on |shut |start )/i,
+  /^(pack |prep |prepare |set up |arrange |organize )/i,
+  /\bswitch\b/i, /\bchange\b/i,
+  /\bclosed\b/i, /\bout\b.*\btrash\b/i, /\btrash\s*out\b/i,
+  /\bdishwasher\b/i, /\blaundry\b/i,
+];
+
+function autoCategorize(itemName) {
+  const lower = itemName.toLowerCase();
+
+  // Check for to-do patterns first
+  for (const pattern of TODO_PATTERNS) {
+    if (pattern.test(lower)) return 'To Do';
+  }
+
+  for (const [keyword, category] of Object.entries(ITEM_CATEGORY_MAP)) {
+    if (lower.includes(keyword)) return category;
+  }
+  return 'Miscellaneous';
+}
+
+let items = {};
+let trips = {};
+let currentTripId = null;
+let currentFilter = 'all';
+let editingId = null;
+let viewUnpackedOnly = false;
+let viewShoppingOnly = false;
+let viewToDoOnly = false;
+let personFilterValue = '';
+let currentMode = 'packing';
+let sortAlwaysBringTop = false;
+let collapseStates = {};
+let categoryDrillDownMode = null;
+let previousScrollPosition = 0;
+let useGridView = true;
+let viewAllItems = false;
+let tripSettingsTargetId = null;
+
+// Active Firebase listeners (to detach when switching trips)
+let activeListeners = [];
+
+// ══════════════════════════════════════════
+// Trip-scoped refs helper
+// ══════════════════════════════════════════
+function getCurrentTripRefs() {
+  if (!currentTripId) return null;
+  return {
+    items: db.ref('trips/' + currentTripId + '/items'),
+    state: db.ref('trips/' + currentTripId + '/appState'),
+    categories: db.ref('trips/' + currentTripId + '/categories'),
+    meta: db.ref('trips/' + currentTripId)
+  };
+}
+
+// ══════════════════════════════════════════
+// Trip-scoped localStorage
+// ══════════════════════════════════════════
+function loadTripLocalState() {
+  if (!currentTripId) return;
+  sortAlwaysBringTop = localStorage.getItem('sortAlwaysBringTop_' + currentTripId) === 'true';
+  collapseStates = JSON.parse(localStorage.getItem('collapseStates_' + currentTripId) || '{}');
+}
+
+function saveSortPref() {
+  if (!currentTripId) return;
+  localStorage.setItem('sortAlwaysBringTop_' + currentTripId, sortAlwaysBringTop);
+}
+
+// ══════════════════════════════════════════
+// Firebase Listener Management
+// ══════════════════════════════════════════
+function detachTripListeners() {
+  activeListeners.forEach(({ ref, event, cb }) => ref.off(event, cb));
+  activeListeners = [];
+}
+
+function attachTripListeners(tripId) {
+  detachTripListeners();
+  currentTripId = tripId;
+  loadTripLocalState();
+
+  const refs = getCurrentTripRefs();
+  if (!refs) return;
+
+  // Keep synced for offline (only if available)
+  if (typeof refs.items.keepSynced === 'function') {
+    refs.items.keepSynced(true);
+    refs.state.keepSynced(true);
+    refs.categories.keepSynced(true);
+  }
+
+  // Categories listener
+  CATEGORIES = [...DEFAULT_CATEGORIES];
+  const catCb = refs.categories.on('value', (snapshot) => {
+    CATEGORIES = [...DEFAULT_CATEGORIES];
+    const custom = snapshot.val();
+    if (custom) {
+      Object.values(custom).forEach(c => {
+        if (!CATEGORIES.find(x => x.name === c.name)) {
+          CATEGORIES.push({ name: c.name, icon: c.icon || '📁', requiresAssignment: !!c.requiresAssignment });
+        }
+      });
+    }
+    rebuildCategoryDropdowns();
+    rebuildFilterPills();
+    renderCurrentMode();
+  });
+  activeListeners.push({ ref: refs.categories, event: 'value', cb: catCb });
+
+  // Items listener
+  const itemCb = refs.items.on('value', (snapshot) => {
+    items = snapshot.val() || {};
+    renderCurrentMode();
+    updateStats();
+    updateTripMetadata();
+  });
+  activeListeners.push({ ref: refs.items, event: 'value', cb: itemCb });
+}
+
+function updateTripMetadata() {
+  if (!currentTripId) return;
+  const count = Object.keys(items).length;
+  db.ref('trips/' + currentTripId).update({
+    itemCount: count,
+    lastUsedAt: firebase.database.ServerValue.TIMESTAMP
+  });
+}
+
+// ══════════════════════════════════════════
+// Global trips listener
+// ══════════════════════════════════════════
+db.ref('trips').on('value', (snapshot) => {
+  trips = snapshot.val() || {};
+  if (currentView === 'home') renderTripGrid();
+});
+
+// ══════════════════════════════════════════
+// Filtering
+// ══════════════════════════════════════════
+function getFilteredItems() {
+  let list = Object.entries(items);
+
+  // All items view — include everything (including To Do)
+  if (viewAllItems) {
+    // no category exclusions
+  } else if (viewToDoOnly) {
+    return list.filter(([, it]) => it.category === 'To Do' && !it.packed);
+  } else if (currentFilter !== 'To Do') {
+    // Exclude To Do items from normal packing views
+    list = list.filter(([, it]) => it.category !== 'To Do');
+  }
+
+  // Category filter
+  if (currentFilter !== 'all') {
+    list = list.filter(([, it]) => it.category === currentFilter);
+  }
+
+  // Person filter
+  if (personFilterValue) {
+    list = list.filter(([, it]) => it.assignedTo === personFilterValue);
+  }
+
+  // Unpacked only
+  if (viewUnpackedOnly) {
+    list = list.filter(([, it]) => !it.packed);
+  }
+
+  // Shopping list only
+  if (viewShoppingOnly) {
+    list = list.filter(([, it]) => it.needToBuy && !it.packed);
+  }
+
+  return list;
+}
+
+function toggleViewFilter(which, btn) {
+  const viewToggles = { shopping: 'toggleShopping', todo: 'toggleToDo', allitems: 'toggleAllItems' };
+
+  if (which === 'unpacked') {
+    // Unpacked is a layered filter — doesn't affect other view modes
+    viewUnpackedOnly = !viewUnpackedOnly;
+    btn.classList.toggle('active', viewUnpackedOnly);
+    renderCurrentMode();
+    return;
+  }
+
+  // Toggle the requested view
+  if (which === 'shopping') viewShoppingOnly = !viewShoppingOnly;
+  else if (which === 'todo') viewToDoOnly = !viewToDoOnly;
+  else if (which === 'allitems') viewAllItems = !viewAllItems;
+
+  const states = { shopping: () => viewShoppingOnly, todo: () => viewToDoOnly, allitems: () => viewAllItems };
+  const isActive = states[which]();
+
+  // If activating a view, deactivate other views (but NOT unpacked)
+  if (isActive) {
+    if (which !== 'shopping') { viewShoppingOnly = false; }
+    if (which !== 'todo') { viewToDoOnly = false; }
+    if (which !== 'allitems') { viewAllItems = false; }
+  }
+
+  // Update view toggle button classes (not unpacked)
+  for (const [key, id] of Object.entries(viewToggles)) {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('active', states[key]());
+  }
+
+  // Reset drill-down when switching view filters
+  categoryDrillDownMode = null;
+  renderCurrentMode();
+}
+
+function applyFilters() {
+  personFilterValue = document.getElementById('personFilter').value;
+  renderCurrentMode();
+}
+
+// ══════════════════════════════════════════
+// Render
+// ══════════════════════════════════════════
+function renderItems() {
+  const main = document.getElementById('mainContent');
+  const allItems = Object.entries(items);
+  const filteredItems = getFilteredItems();
+
+  if (allItems.length === 0) {
+    main.innerHTML = `<div class="empty-state" id="emptyState">
+      <div class="mountain-icon" aria-hidden="true">🏔️</div>
+      <p>No items yet</p>
+      <p style="font-size:14px;color:var(--gray-light);">Tap + to add your first item</p>
+    </div>`;
+    return;
+  }
+
+  if (filteredItems.length === 0) {
+    const totalPacked = allItems.filter(([, it]) => it.packed).length;
+    if (viewUnpackedOnly && totalPacked === allItems.length) {
+      main.innerHTML = `<div class="celebration-state" role="status">
+        <div class="celeb-icon">🎉</div>
+        <p>Everything's packed!</p>
+        <p class="celeb-sub">Ready for Mammoth!</p>
+      </div>`;
+    } else {
+      main.innerHTML = `<div class="empty-state"><div class="mountain-icon" aria-hidden="true">🔍</div><p>No items match your filters.</p></div>`;
+    }
+    return;
+  }
+
+  // Grid view mode
+  if (useGridView) {
+    if (viewShoppingOnly) {
+      renderShoppingGrid(filteredItems);
+    } else if (viewAllItems) {
+      renderFlatGrid(filteredItems, '📝 Full List');
+    } else if (categoryDrillDownMode) {
+      renderExpandedCategory(categoryDrillDownMode, allItems, filteredItems);
+    } else {
+      renderCategoryDashboard(allItems, filteredItems);
+    }
+    return;
+  }
+
+  // Original list view
+  const allPacked = allItems.length > 0 && allItems.every(([, it]) => it.packed) && currentFilter === 'all' && !personFilterValue && !viewUnpackedOnly && !viewShoppingOnly && !viewToDoOnly;
+  let celebrationHtml = '';
+  if (allPacked) {
+    celebrationHtml = `<div class="celebration-state" role="status">
+      <div class="celeb-icon">🎉</div>
+      <p>Everything's packed!</p>
+      <p class="celeb-sub">Ready for Mammoth!</p>
+    </div>`;
+  }
+
+  let html = '';
+  for (const cat of CATEGORIES) {
+    if (currentFilter !== 'all' && currentFilter !== cat.name) continue;
+
+    const catItems = filteredItems.filter(([, it]) => it.category === cat.name);
+    if (catItems.length === 0) continue;
+
+    const allCatItems = allItems.filter(([, it]) => it.category === cat.name);
+    const totalInCat = allCatItems.length;
+    const packedInCat = allCatItems.filter(([, it]) => it.packed).length;
+    const pct = totalInCat > 0 ? Math.round((packedInCat / totalInCat) * 100) : 0;
+
+    html += `<div class="category-group" id="cat-${cat.name.replace(/\s/g,'')}">`;
+    html += `<div class="category-header" onclick="toggleCategoryCollapse(this.parentElement)">`;
+    html += `<div class="cat-info"><div class="cat-title-row"><h2>${cat.icon} ${cat.name}</h2><span class="cat-count">${packedInCat} of ${totalInCat} packed</span></div>`;
+    html += `<div class="cat-progress"><div class="cat-progress-fill" style="width:${pct}%"></div></div></div>`;
+    html += `<span class="chevron">▼</span></div>`;
+    html += `<div class="category-items">`;
+
+    if (cat.requiresAssignment) {
+      const people = personFilterValue ? [personFilterValue] : [...FAMILY, null];
+      for (const person of people) {
+        let personItems = catItems.filter(([, it]) =>
+          person === null ? !it.assignedTo : it.assignedTo === person
+        );
+        if (personItems.length === 0) continue;
+        if (sortAlwaysBringTop) personItems = sortAlwaysFirst(personItems);
+        const label = person || 'Unassigned';
+        const allPersonItems = allCatItems.filter(([, it]) =>
+          person === null ? !it.assignedTo : it.assignedTo === person
+        );
+        const pPacked = allPersonItems.filter(([, it]) => it.packed).length;
+        const pTotal = allPersonItems.length;
+        html += `<div class="person-subgroup">`;
+        html += `<div class="person-header">${label} <span class="person-count">${pPacked} of ${pTotal} packed</span></div>`;
+        html += personItems.map(([id, it]) => renderItemRow(id, it)).join('');
+        html += `</div>`;
+      }
+    } else {
+      const sorted = sortAlwaysBringTop ? sortAlwaysFirst(catItems) : catItems;
+      html += sorted.map(([id, it]) => renderItemRow(id, it)).join('');
+    }
+
+    html += `</div></div>`;
+  }
+  main.innerHTML = celebrationHtml + html;
+  applyCategoryCollapseStates();
+}
+
+// ══════════════════════════════════════════
+// Grid View
+// ══════════════════════════════════════════
+function renderCategoryDashboard(allItems, filteredItems) {
+  const main = document.getElementById('mainContent');
+  let html = '<div class="category-dashboard">';
+
+  for (const cat of CATEGORIES) {
+    if (currentFilter !== 'all' && currentFilter !== cat.name) continue;
+
+    const catItems = filteredItems.filter(([, it]) => it.category === cat.name);
+    const allCatItems = allItems.filter(([, it]) => it.category === cat.name);
+    const totalInCat = allCatItems.length;
+    if (totalInCat === 0 && catItems.length === 0) continue;
+    const packedInCat = allCatItems.filter(([, it]) => it.packed).length;
+    const pct = totalInCat > 0 ? Math.round((packedInCat / totalInCat) * 100) : 0;
+
+    html += `<div class="category-card" onclick="expandCategory('${cat.name.replace(/'/g,"\\'")}')">
+      <div class="category-card-icon">${cat.icon}</div>
+      <div class="category-card-name">${cat.name}</div>
+      <div class="category-card-count">${packedInCat} of ${totalInCat} packed</div>
+      <div class="category-card-progress"><div class="category-card-progress-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }
+
+  html += '</div>';
+  main.innerHTML = html;
+}
+
+function renderExpandedCategory(categoryName, allItems, filteredItems) {
+  const main = document.getElementById('mainContent');
+  const cat = CATEGORIES.find(c => c.name === categoryName);
+  if (!cat) { categoryDrillDownMode = null; renderItems(); return; }
+
+  const catItems = filteredItems.filter(([, it]) => it.category === cat.name);
+  const allCatItems = allItems.filter(([, it]) => it.category === cat.name);
+  const totalInCat = allCatItems.length;
+  const packedInCat = allCatItems.filter(([, it]) => it.packed).length;
+
+  let html = `<div class="category-expanded">
+    <div class="category-expanded-header">
+      <button class="category-back-btn" onclick="collapseCategoryView()">←</button>
+      <div class="category-expanded-title"><span>${cat.icon}</span><span>${cat.name}</span></div>
+      <div class="category-expanded-count">${packedInCat} of ${totalInCat} packed</div>
+    </div>`;
+
+  if (cat.requiresAssignment) {
+    const people = personFilterValue ? [personFilterValue] : [...FAMILY, null];
+    for (const person of people) {
+      let personItems = catItems.filter(([, it]) =>
+        person === null ? !it.assignedTo : it.assignedTo === person
+      );
+      if (personItems.length === 0) continue;
+      if (sortAlwaysBringTop) personItems = sortAlwaysFirst(personItems);
+      const label = person || 'Unassigned';
+      const allPersonItems = allCatItems.filter(([, it]) =>
+        person === null ? !it.assignedTo : it.assignedTo === person
+      );
+      const pPacked = allPersonItems.filter(([, it]) => it.packed).length;
+      const pTotal = allPersonItems.length;
+      html += `<div class="person-subgroup-grid">
+        <div class="person-header">${label} <span class="person-count">${pPacked} of ${pTotal} packed</span></div>
+        <div class="items-grid">${personItems.map(([id, it]) => renderItemCard(id, it)).join('')}</div>
+      </div>`;
+    }
+  } else {
+    const sorted = sortAlwaysBringTop ? sortAlwaysFirst(catItems) : catItems;
+    html += `<div class="items-grid">${sorted.map(([id, it]) => renderItemCard(id, it)).join('')}</div>`;
+  }
+
+  html += '</div>';
+  main.innerHTML = html;
+}
+
+function renderFlatGrid(filteredItems, title) {
+  const main = document.getElementById('mainContent');
+  const sorted = sortAlwaysBringTop ? sortAlwaysFirst(filteredItems) : filteredItems;
+  main.innerHTML = `<div style="padding:12px 16px;font-size:15px;font-weight:600;color:var(--blue-dark);">${title} <span style="font-weight:400;color:var(--gray-light);font-size:13px;">(${sorted.length} items)</span></div>
+    <div class="items-grid">${sorted.map(([id, it]) => renderItemCard(id, it)).join('')}</div>`;
+}
+
+function renderShoppingGrid(filteredItems) {
+  const main = document.getElementById('mainContent');
+  const sorted = sortAlwaysBringTop ? sortAlwaysFirst(filteredItems) : filteredItems;
+  const total = sorted.length;
+  const purchased = sorted.filter(([, it]) => it.packed).length;
+
+  let html = `<div class="category-expanded">
+    <div class="category-expanded-header">
+      <button class="category-back-btn" onclick="switchMode('packing')">←</button>
+      <div class="category-expanded-title"><span>🛒</span><span>Shopping List</span></div>
+      <div class="category-expanded-count">${total} items</div>
+    </div>
+    <div class="items-grid">${sorted.map(([id, it]) => renderItemCard(id, it)).join('')}</div>
+  </div>`;
+  main.innerHTML = html;
+}
+
+function renderItemCard(id, item) {
+  const classes = ['item-card'];
+  if (item.packed) classes.push('packed');
+  if (item.needToBuy && !item.packed) classes.push('need-to-buy');
+  if (item.alwaysBring && !item.packed) classes.push('always-highlight');
+
+  let indicators = '';
+  if (item.needToBuy) indicators += '<span>🛒</span>';
+  if (item.alwaysBring) indicators += '<span>⭐</span>';
+
+  const catOpts = CATEGORIES.map(c =>
+    `<option value="${c.name}"${c.name === item.category ? ' selected' : ''}>${c.icon} ${c.name}</option>`
+  ).join('');
+
+  return `<div class="${classes.join(' ')}" data-id="${id}" onclick="togglePackedCard('${id}', event)" oncontextmenu="showCardActions('${id}', event)">
+    <div class="item-card-top">
+      <div class="item-card-checkbox"></div>
+      <div class="item-card-name">${escapeHtml(item.name)}</div>
+    </div>
+    <div class="item-card-bottom">
+      ${item.quantity > 1 ? `<span class="item-card-qty">&times;${item.quantity}</span>` : '<span></span>'}
+      <div class="item-card-indicators">${indicators}</div>
+    </div>
+    <div class="item-card-actions">
+      <div class="item-card-actions-row">
+        <button onclick="event.stopPropagation();toggleNeedToBuy('${id}')">🛒</button>
+        <button onclick="event.stopPropagation();openEditModal('${id}')">✏️</button>
+        <button onclick="event.stopPropagation();confirmDeleteItem('${id}')">🗑️</button>
+      </div>
+      <select onclick="event.stopPropagation()" onchange="recategorizeItem('${id}', this.value)">${catOpts}</select>
+    </div>
+  </div>`;
+}
+
+function expandCategory(categoryName) {
+  previousScrollPosition = window.scrollY;
+  categoryDrillDownMode = categoryName;
+  currentFilter = categoryName;
+  // Update pill highlights
+  document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.filter-pill').forEach(p => {
+    if (p.textContent.includes(categoryName) || (categoryName === 'all' && p.textContent === 'All')) p.classList.add('active');
+  });
+  renderItems();
+  window.scrollTo(0, 0);
+}
+
+function collapseCategoryView() {
+  categoryDrillDownMode = null;
+  currentFilter = 'all';
+  document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+  const allPill = document.querySelector('.filter-pill');
+  if (allPill) allPill.classList.add('active');
+  renderItems();
+  setTimeout(() => window.scrollTo(0, previousScrollPosition), 0);
+}
+
+function togglePackedCard(id, event) {
+  if (event && event.target.closest('.item-card-actions')) return;
+  const card = event.currentTarget;
+  if (card.classList.contains('show-actions')) {
+    card.classList.remove('show-actions');
+    return;
+  }
+  const item = items[id];
+  if (!item) return;
+  const refs = getCurrentTripRefs();
+  if (!refs) return;
+  if (viewShoppingOnly) {
+    refs.items.child(id).update({ needToBuy: false });
+    showToast(`${item.name} removed from shopping list`);
+  } else {
+    refs.items.child(id).update({ packed: !item.packed });
+  }
+}
+
+function showCardActions(id, event) {
+  event.preventDefault();
+  event.stopPropagation();
+  const card = event.currentTarget || event.target.closest('.item-card');
+  if (card && card.classList.contains('show-actions')) {
+    card.classList.remove('show-actions');
+    return;
+  }
+  document.querySelectorAll('.item-card.show-actions').forEach(c => c.classList.remove('show-actions'));
+  if (card) card.classList.add('show-actions');
+}
+
+function recategorizeItem(id, newCategory) {
+  const item = items[id];
+  if (!item || item.category === newCategory) return;
+  const refs = getCurrentTripRefs();
+  if (refs) {
+    refs.items.child(id).update({ category: newCategory });
+    showToast(`Moved to ${newCategory}`);
+  }
+}
+
+function toggleViewMode() {
+  useGridView = !useGridView;
+  categoryDrillDownMode = null;
+  document.getElementById('viewModeBtn').textContent = useGridView ? '📋 List' : '⊞ Grid';
+  renderCurrentMode();
+}
+
+// Long-press support for item cards
+let cardPressTimer = null;
+document.addEventListener('pointerdown', (e) => {
+  const card = e.target.closest('.item-card');
+  if (!card || e.target.closest('.item-card-actions')) return;
+  cardPressTimer = setTimeout(() => {
+    document.querySelectorAll('.item-card.show-actions').forEach(c => c.classList.remove('show-actions'));
+    card.classList.add('show-actions');
+    cardPressTimer = null;
+  }, 500);
+});
+document.addEventListener('pointerup', () => { if (cardPressTimer) clearTimeout(cardPressTimer); });
+document.addEventListener('pointermove', () => { if (cardPressTimer) clearTimeout(cardPressTimer); });
+// Close action overlay when tapping outside
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.item-card')) {
+    document.querySelectorAll('.item-card.show-actions').forEach(c => c.classList.remove('show-actions'));
+  }
+});
+
+function sortAlwaysFirst(itemList) {
+  return [...itemList].sort((a, b) => {
+    const aAlways = a[1].alwaysBring ? 0 : 1;
+    const bAlways = b[1].alwaysBring ? 0 : 1;
+    return aAlways - bAlways;
+  });
+}
+
+function toggleCategoryCollapse(groupEl) {
+  groupEl.classList.toggle('collapsed');
+  const id = groupEl.id;
+  if (id) {
+    saveCategoryCollapseState(id, groupEl.classList.contains('collapsed'));
+  }
+}
+
+function renderItemRow(id, item) {
+  const classes = ['item-row'];
+  if (item.packed) classes.push('packed');
+  if (item.needToBuy && !item.packed) classes.push('need-to-buy');
+  if (item.alwaysBring && !item.packed) classes.push('always-highlight');
+
+  let indicators = '';
+  if (item.needToBuy) indicators += `<span class="indicator indicator-buy" title="Need to buy">🛒</span>`;
+  if (item.alwaysBring) indicators += `<span class="indicator indicator-always" title="Always bring">⭐</span>`;
+
+  const cartClass = item.needToBuy ? 'btn-cart on-list' : 'btn-cart';
+
+  const packedLabel = item.packed ? 'packed' : 'not packed';
+  return `
+    <div class="item-row-wrapper" data-id="${id}">
+      <div class="swipe-buy-bg" aria-hidden="true">🛒</div>
+      <div class="swipe-delete-bg" aria-hidden="true">🗑️</div>
+      <div class="${classes.join(' ')}" onclick="togglePacked('${id}', event)" role="checkbox" aria-checked="${item.packed}" aria-label="${escapeHtml(item.name)}, ${packedLabel}" tabindex="0">
+        <div class="item-checkbox" id="chk-${id}" aria-hidden="true"></div>
+        <div class="item-name">${escapeHtml(item.name)}</div>
+        ${item.quantity > 1 ? `<span class="item-qty" aria-label="quantity ${item.quantity}">×${item.quantity}</span>` : ''}
+        <div class="item-indicators" aria-hidden="true">${indicators}</div>
+        <div class="item-actions">
+          <button class="${cartClass}" onclick="event.stopPropagation();toggleNeedToBuy('${id}')" aria-label="Toggle ${escapeHtml(item.name)} on shopping list">🛒</button>
+          <button class="btn-trash" onclick="event.stopPropagation();confirmDeleteItem('${id}')" aria-label="Delete ${escapeHtml(item.name)}">🗑️</button>
+          <button onclick="event.stopPropagation();openEditModal('${id}')" aria-label="Edit ${escapeHtml(item.name)}">✏️</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function updateStats() {
+  const all = Object.values(items).filter(i => i.category !== 'To Do');
+  const total = all.length;
+  const packed = all.filter(i => i.packed).length;
+  const buy = all.filter(i => i.needToBuy).length;
+
+  if (currentMode === 'packing') {
+    document.getElementById('headerStats').style.display = '';
+    document.getElementById('stat-total').textContent = `${total} item${total !== 1 ? 's' : ''}`;
+    document.getElementById('stat-packed').textContent = `${packed} packed`;
+    document.getElementById('stat-buy').textContent = `${buy} to buy`;
+  } else {
+    document.getElementById('headerStats').style.display = 'none';
+  }
+
+  // Update shopping count
+  const countEl = document.getElementById('shopCount');
+  if (countEl) countEl.textContent = buy;
+
+  updateProgressBar();
+}
+
+// ══════════════════════════════════════════
+// Item Actions
+// ══════════════════════════════════════════
+function togglePacked(id, event) {
+  if (event) {
+    // Don't toggle if they clicked the edit button
+    if (event.target.closest('.item-actions')) return;
+  }
+  const item = items[id];
+  if (!item) return;
+  // Pop animation on checkbox
+  const chk = document.getElementById('chk-' + id);
+  if (chk) { chk.classList.remove('pop'); void chk.offsetWidth; chk.classList.add('pop'); }
+  const refs = getCurrentTripRefs();
+  if (!refs) return;
+  if (viewShoppingOnly) {
+    refs.items.child(id).update({ needToBuy: false });
+    showToast(`${item.name} removed from shopping list`);
+  } else {
+    refs.items.child(id).update({ packed: !item.packed });
+  }
+}
+
+function saveItem(addAnother = false) {
+  const name = document.getElementById('itemName').value.trim();
+  if (!name) { document.getElementById('itemName').focus(); return; }
+
+  const catVal = document.getElementById('itemCategory').value;
+  if (catVal === '__new__') { openNewCatModal(); return; }
+
+  const data = {
+    name,
+    category: catVal,
+    quantity: parseInt(document.getElementById('itemQty').value) || 1,
+    needToBuy: document.getElementById('itemBuy').checked,
+    alwaysBring: document.getElementById('itemAlways').checked,
+    assignedTo: document.getElementById('itemAssign').value || null,
+    packed: false,
+    createdAt: Date.now()
+  };
+
+  const refs = getCurrentTripRefs();
+  if (!refs) return;
+  if (editingId) {
+    data.packed = items[editingId]?.packed || false;
+    data.createdAt = items[editingId]?.createdAt || Date.now();
+    refs.items.child(editingId).update(data);
+    showToast('Item updated');
+    closeModal();
+  } else {
+    refs.items.push(data);
+    showToast('Item added');
+    if (addAnother) {
+      // Clear name and qty for next entry, keep category and toggles
+      document.getElementById('itemName').value = '';
+      document.getElementById('itemQty').value = '1';
+      setTimeout(() => document.getElementById('itemName').focus(), 100);
+    } else {
+      closeModal();
+    }
+  }
+}
+
+function deleteItem() {
+  if (!editingId) return;
+  const item = items[editingId];
+  if (!item) return;
+  const alwaysWarn = item.alwaysBring ? '\n\nThis item is marked as "Always Bring". Are you sure?' : '';
+  const refs = getCurrentTripRefs();
+  if (refs && confirm(`Delete "${item.name}"?${alwaysWarn}`)) {
+    refs.items.child(editingId).remove();
+    showToast('Item deleted');
+    closeModal();
+  }
+}
+
+function confirmDeleteItem(id) {
+  const item = items[id];
+  if (!item) return;
+  const refs = getCurrentTripRefs();
+  if (!refs) return;
+  const alwaysWarn = item.alwaysBring ? '\n\nThis item is marked as "Always Bring". Are you sure?' : '';
+  if (confirm(`Delete "${item.name}"?${alwaysWarn}`)) {
+    refs.items.child(id).remove();
+    showToast('Item deleted');
+  }
+}
+
+// ══════════════════════════════════════════
+// Modal
+// ══════════════════════════════════════════
+function rebuildCategoryDropdowns() {
+  const selects = [document.getElementById('itemCategory')];
+  selects.forEach(sel => {
+    if (!sel) return;
+    const current = sel.value;
+    sel.innerHTML = CATEGORIES.map(c =>
+      `<option value="${c.name}">${c.icon} ${c.name}</option>`
+    ).join('') + '<option value="__new__">+ Add New Category...</option>';
+    if (current && sel.querySelector(`option[value="${current}"]`)) sel.value = current;
+  });
+}
+
+function rebuildFilterPills() {
+  const bar = document.querySelector('.filter-bar');
+  if (!bar) return;
+  let html = '<button class="filter-pill' + (currentFilter === 'all' ? ' active' : '') + '" onclick="filterCategory(\'all\', this)">All Categories</button>';
+  for (const cat of CATEGORIES) {
+    const active = currentFilter === cat.name ? ' active' : '';
+    html += `<button class="filter-pill${active}" onclick="filterCategory('${cat.name.replace(/'/g,"\\'")}', this)">${cat.icon} ${cat.name}</button>`;
+  }
+  bar.innerHTML = html;
+}
+
+function openAddModal() {
+  editingId = null;
+  rebuildCategoryDropdowns();
+  document.getElementById('modalTitle').textContent = 'Add Item';
+  document.getElementById('itemName').value = '';
+  document.getElementById('itemCategory').value = 'Miscellaneous';
+  document.getElementById('itemQty').value = '1';
+  document.getElementById('itemBuy').checked = false;
+  document.getElementById('itemAlways').checked = false;
+  document.getElementById('itemAssign').value = '';
+  document.getElementById('deleteBtn').style.display = 'none';
+  document.getElementById('saveAnotherBtn').style.display = '';
+  toggleAssignment();
+  document.getElementById('modalOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('itemName').focus(), 300);
+}
+
+function openEditModal(id) {
+  const item = items[id];
+  if (!item) return;
+  editingId = id;
+  rebuildCategoryDropdowns();
+  document.getElementById('modalTitle').textContent = 'Edit Item';
+  document.getElementById('itemName').value = item.name;
+  document.getElementById('itemCategory').value = item.category;
+  document.getElementById('itemQty').value = item.quantity || 1;
+  document.getElementById('itemBuy').checked = item.needToBuy || false;
+  document.getElementById('itemAlways').checked = item.alwaysBring || false;
+  document.getElementById('itemAssign').value = item.assignedTo || '';
+  document.getElementById('deleteBtn').style.display = 'block';
+  document.getElementById('saveAnotherBtn').style.display = 'none';
+  toggleAssignment();
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function closeModal(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('modalOverlay').classList.remove('open');
+  editingId = null;
+}
+
+function onCategoryChange() {
+  const val = document.getElementById('itemCategory').value;
+  if (val === '__new__') {
+    openNewCatModal();
+    return;
+  }
+  toggleAssignment();
+}
+
+function toggleAssignment() {
+  const cat = document.getElementById('itemCategory').value;
+  const show = CATEGORIES.find(c => c.name === cat)?.requiresAssignment;
+  document.getElementById('assignmentField').style.display = show ? 'block' : 'none';
+}
+
+// ══════════════════════════════════════════
+// New Category
+// ══════════════════════════════════════════
+function openNewCatModal() {
+  document.getElementById('newCatName').value = '';
+  document.getElementById('newCatIcon').value = '';
+  document.getElementById('newCatAssign').checked = false;
+  document.getElementById('newCatOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('newCatName').focus(), 200);
+}
+
+function closeNewCatModal(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('newCatOverlay').classList.remove('open');
+  // Reset category dropdown to previous value if it was __new__
+  const sel = document.getElementById('itemCategory');
+  if (sel && sel.value === '__new__') sel.value = 'Miscellaneous';
+}
+
+function saveNewCategory() {
+  const name = document.getElementById('newCatName').value.trim();
+  if (!name) { document.getElementById('newCatName').focus(); return; }
+  if (CATEGORIES.find(c => c.name.toLowerCase() === name.toLowerCase())) {
+    showToast('Category already exists');
+    return;
+  }
+  const icon = document.getElementById('newCatIcon').value.trim() || '📁';
+  const requiresAssignment = document.getElementById('newCatAssign').checked;
+
+  const newCat = { name, icon, requiresAssignment };
+  const refs = getCurrentTripRefs();
+  if (refs) refs.categories.push(newCat);
+  CATEGORIES.push(newCat);
+
+  closeNewCatModal();
+  rebuildCategoryDropdowns();
+  rebuildFilterPills();
+
+  // Select the new category in the item modal
+  const sel = document.getElementById('itemCategory');
+  if (sel) sel.value = name;
+  toggleAssignment();
+
+  showToast(`Category "${name}" added`);
+}
+
+// ══════════════════════════════════════════
+// Swipe to Delete (mobile)
+// ══════════════════════════════════════════
+let swipeState = null;
+
+document.addEventListener('touchstart', (e) => {
+  const wrapper = e.target.closest('.item-row-wrapper');
+  if (!wrapper) return;
+  const touch = e.touches[0];
+  swipeState = { wrapper, startX: touch.clientX, startY: touch.clientY, moved: false };
+}, { passive: true });
+
+document.addEventListener('touchmove', (e) => {
+  if (!swipeState) return;
+  const touch = e.touches[0];
+  const dx = touch.clientX - swipeState.startX;
+  const dy = touch.clientY - swipeState.startY;
+
+  // If vertical scroll is dominant, cancel swipe
+  if (!swipeState.moved && Math.abs(dy) > Math.abs(dx)) { swipeState = null; return; }
+
+  if (Math.abs(dx) > 10) {
+    swipeState.moved = true;
+    swipeState.direction = dx > 0 ? 'right' : 'left';
+    swipeState.wrapper.classList.add('swiping');
+    const row = swipeState.wrapper.querySelector('.item-row');
+    const offset = dx > 0 ? Math.min(dx, 100) : Math.max(dx, -100);
+    row.style.transform = `translateX(${offset}px)`;
+  }
+}, { passive: true });
+
+document.addEventListener('touchend', () => {
+  if (!swipeState || !swipeState.moved) { swipeState = null; return; }
+  const wrapper = swipeState.wrapper;
+  const row = wrapper.querySelector('.item-row');
+  const id = wrapper.dataset.id;
+  const currentX = parseFloat(row.style.transform.replace(/[^-\d.]/g, '')) || 0;
+
+  wrapper.classList.remove('swiping');
+
+  if (currentX <= -70 && id) {
+    // Swiped left far enough — delete
+    row.style.transform = 'translateX(-100%)';
+    setTimeout(() => confirmDeleteItem(id), 200);
+  } else if (currentX >= 70 && id) {
+    // Swiped right far enough — toggle needToBuy
+    row.style.transform = 'translateX(0)';
+    toggleNeedToBuy(id);
+  } else {
+    row.style.transform = 'translateX(0)';
+  }
+  swipeState = null;
+});
+
+// ══════════════════════════════════════════
+// Import
+// ══════════════════════════════════════════
+let parsedImportItems = [];
+
+function toggleImport() {
+  document.getElementById('importSection').classList.toggle('open');
+}
+
+function parseLine(line) {
+  line = line.trim();
+  if (!line) return null;
+  // Remove bullet points, dashes at start, list markers
+  line = line.replace(/^[\u2022\u2023\u25E6\u2043\u2219•●○◦-]\s*/, '');
+  line = line.trim();
+  if (!line) return null;
+
+  let quantity = 1;
+  let name = line;
+
+  // Pattern: "2x Item" or "2 x Item"
+  let m = line.match(/^(\d+)\s*x\s+(.+)$/i);
+  if (m) { quantity = parseInt(m[1]); name = m[2]; }
+
+  // Pattern: "2 - Item"
+  if (!m) {
+    m = line.match(/^(\d+)\s*-\s+(.+)$/);
+    if (m) { quantity = parseInt(m[1]); name = m[2]; }
+  }
+
+  // Pattern: "2 Item" (number then space then text starting with a letter)
+  if (!m) {
+    m = line.match(/^(\d+)\s+([a-zA-Z].+)$/);
+    if (m) { quantity = parseInt(m[1]); name = m[2]; }
+  }
+
+  // Pattern: "Item (x2)" or "Item (×2)"
+  if (!m) {
+    m = line.match(/^(.+?)\s*\((?:x|×)(\d+)\)$/i);
+    if (m) { name = m[1]; quantity = parseInt(m[2]); }
+  }
+
+  name = name.trim();
+  if (!name) return null;
+  if (quantity < 1) quantity = 1;
+
+  return { name, quantity, category: 'Miscellaneous', assignedTo: '', needToBuy: false, alwaysBring: false, selected: false, duplicate: false };
+}
+
+function isDuplicate(name, category, assignedTo) {
+  const key = `${name.toLowerCase()}|${category}|${(assignedTo || '').toLowerCase()}`;
+  return Object.values(items).some(it =>
+    `${it.name.toLowerCase()}|${it.category}|${(it.assignedTo || '').toLowerCase()}` === key
+  );
+}
+
+function parseMarkdown(text) {
+  const lines = text.split('\n');
+  const results = [];
+  let currentCategory = 'Miscellaneous';
+  let useAutoCategorize = false;
+  const categoryNames = CATEGORIES.map(c => c.name.toLowerCase());
+
+  // Map common markdown header names to app categories
+  const HEADER_CATEGORY_MAP = {
+    'clothes': 'Clothes and Gear', 'clothing': 'Clothes and Gear', 'gear': 'Clothes and Gear',
+    'ski gear': 'Clothes and Gear', 'snow gear': 'Clothes and Gear', 'outerwear': 'Clothes and Gear',
+    'toiletries': 'Toiletries', 'bathroom': 'Toiletries', 'hygiene': 'Toiletries',
+    'food': 'Dry Foods', 'groceries': 'Dry Foods', 'snacks': 'Dry Foods', 'pantry': 'Dry Foods',
+    'fridge': 'Refrigerated Foods', 'refrigerated': 'Refrigerated Foods', 'cold': 'Refrigerated Foods',
+    'drinks': 'Refrigerated Foods', 'beverages': 'Refrigerated Foods',
+    'other': 'Miscellaneous', 'misc': 'Miscellaneous', 'miscellaneous': 'Miscellaneous',
+    'electronics': 'Miscellaneous', 'tech': 'Miscellaneous', 'kitchen': 'Dry Foods',
+    'before leaving': 'To Do', 'to do': 'To Do', 'todo': 'To Do', 'tasks': 'To Do',
+    'prep': 'To Do', 'preparation': 'To Do', 'car': 'To Do', 'condo stuff': 'To Do',
+  };
+
+  for (const line of lines) {
+    const headerMatch = line.match(/^#{1,3}\s+(.+)$/);
+    if (headerMatch) {
+      const headerText = headerMatch[1].trim();
+      const matchIdx = categoryNames.indexOf(headerText.toLowerCase());
+      if (matchIdx !== -1) {
+        currentCategory = CATEGORIES[matchIdx].name;
+        useAutoCategorize = false;
+      } else if (HEADER_CATEGORY_MAP[headerText.toLowerCase()]) {
+        currentCategory = HEADER_CATEGORY_MAP[headerText.toLowerCase()];
+        useAutoCategorize = false;
+      } else {
+        // Unknown header — fall back to auto-categorize per item
+        currentCategory = null;
+        useAutoCategorize = true;
+      }
+      continue;
+    }
+    // List items: -, *, numbered (1.), or plain non-empty lines
+    const listMatch = line.match(/^[\s]*(?:[-*]|\d+[.)]\s)\s*(.+)$/);
+    const itemText = listMatch ? listMatch[1] : line.trim();
+    if (itemText) {
+      const parsed = parseLine(itemText);
+      if (parsed) {
+        parsed.category = useAutoCategorize ? autoCategorize(parsed.name) : (currentCategory || 'Miscellaneous');
+        results.push(parsed);
+      }
+    }
+  }
+  return results;
+}
+
+function detectGoogleDocsUrl(text) {
+  const m = text.match(/https:\/\/docs\.google\.com\/document\/d\/([a-zA-Z0-9_-]+)/);
+  return m ? m[1] : null;
+}
+
+async function detectAndFetchSource() {
+  const textarea = document.getElementById('importText');
+  const text = textarea.value.trim();
+  if (!text) { showToast('Paste some items first'); return; }
+
+  const docId = detectGoogleDocsUrl(text);
+  if (docId) {
+    try {
+      const url = `https://docs.google.com/document/d/${docId}/export?format=txt`;
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error('Fetch failed');
+      const content = await resp.text();
+      textarea.value = content;
+      showToast('Fetched Google Doc content');
+    } catch (e) {
+      showToast('Could not fetch Google Doc. Make sure it\'s publicly shared, or copy-paste the content manually.', 4000);
+      return;
+    }
+  }
+  parseAndPreview();
+}
+
+function handleFileImport(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    document.getElementById('importText').value = e.target.result;
+    showToast('File loaded: ' + file.name);
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+function parseAndPreview() {
+  const text = document.getElementById('importText').value.trim();
+  if (!text) { showToast('Paste some items first'); return; }
+
+  const hasMarkdownHeaders = /^#{1,3}\s+.+/m.test(text);
+
+  if (hasMarkdownHeaders) {
+    parsedImportItems = parseMarkdown(text);
+  } else {
+    const lines = text.split('\n');
+    parsedImportItems = [];
+    for (const line of lines) {
+      const parsed = parseLine(line);
+      if (parsed) parsedImportItems.push(parsed);
+    }
+  }
+
+  // Auto-categorize items still set to Miscellaneous
+  for (const item of parsedImportItems) {
+    if (item.category === 'Miscellaneous') {
+      item.category = autoCategorize(item.name);
+    }
+  }
+
+  // Check duplicates
+  for (const item of parsedImportItems) {
+    item.duplicate = isDuplicate(item.name, item.category, item.assignedTo);
+  }
+
+  if (parsedImportItems.length === 0) { showToast('No items found in text'); return; }
+
+  renderImportPreview();
+  document.getElementById('importOverlay').classList.add('open');
+}
+
+function renderImportPreview() {
+  const list = document.getElementById('importPreviewList');
+  const catOpts = CATEGORIES.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+  const personOpts = FAMILY.map(p => `<option value="${p}">${p}</option>`).join('');
+  const hasDupes = parsedImportItems.some(it => it.duplicate);
+
+  document.getElementById('importCount').textContent = parsedImportItems.length;
+  document.getElementById('importDupWarning').style.display = hasDupes ? 'inline' : 'none';
+  updateSelectedCount();
+
+  let html = '';
+  parsedImportItems.forEach((it, i) => {
+    const dupClass = it.duplicate ? ' duplicate' : '';
+    const needsAssign = CATEGORIES.find(c => c.name === it.category)?.requiresAssignment;
+    html += `<div class="import-item${dupClass}" data-idx="${i}">
+      <input type="checkbox" ${it.selected ? 'checked' : ''} onchange="toggleImportSelect(${i}, this.checked)">
+      <span class="ii-name">${escapeHtml(it.name)}</span>
+      <input type="number" class="ii-qty" value="${it.quantity}" min="1" onchange="parsedImportItems[${i}].quantity=parseInt(this.value)||1">
+      <select class="ii-cat" onchange="importCatChange(${i}, this.value)">
+        ${catOpts.replace(`value="${it.category}"`, `value="${it.category}" selected`)}
+      </select>
+      <select class="ii-person" style="display:${needsAssign ? 'inline-block' : 'none'}" onchange="parsedImportItems[${i}].assignedTo=this.value;recheckDuplicate(${i})">
+        <option value="">Unassigned</option>
+        ${personOpts.replace(`value="${it.assignedTo}"`, `value="${it.assignedTo}" selected`)}
+      </select>
+      <div class="ii-toggles">
+        <button class="ii-toggle${it.needToBuy ? ' active-buy' : ''}" onclick="toggleImportFlag(${i},'needToBuy',this)">Buy</button>
+        <button class="ii-toggle${it.alwaysBring ? ' active-always' : ''}" onclick="toggleImportFlag(${i},'alwaysBring',this)">Always</button>
+      </div>
+      <button class="ii-remove" onclick="removeImportItem(${i})">✕</button>
+    </div>`;
+  });
+  list.innerHTML = html;
+}
+
+function importCatChange(i, val) {
+  parsedImportItems[i].category = val;
+  const needsAssign = CATEGORIES.find(c => c.name === val)?.requiresAssignment;
+  const row = document.querySelector(`.import-item[data-idx="${i}"]`);
+  const personSel = row.querySelector('.ii-person');
+  personSel.style.display = needsAssign ? 'inline-block' : 'none';
+  if (!needsAssign) { parsedImportItems[i].assignedTo = ''; personSel.value = ''; }
+  recheckDuplicate(i);
+}
+
+function recheckDuplicate(i) {
+  const it = parsedImportItems[i];
+  it.duplicate = isDuplicate(it.name, it.category, it.assignedTo);
+  const row = document.querySelector(`.import-item[data-idx="${i}"]`);
+  if (row) row.classList.toggle('duplicate', it.duplicate);
+  document.getElementById('importDupWarning').style.display =
+    parsedImportItems.some(x => x.duplicate) ? 'inline' : 'none';
+}
+
+function toggleImportSelect(i, checked) {
+  parsedImportItems[i].selected = checked;
+  updateSelectedCount();
+}
+
+function updateSelectedCount() {
+  document.getElementById('selectedCount').textContent =
+    parsedImportItems.filter(it => it.selected).length;
+  // Show/hide bulk person dropdown
+  const bulkCat = document.getElementById('bulkCategory').value;
+  document.getElementById('bulkPerson').style.display =
+    bulkCat === 'Clothes and Gear' ? 'inline-block' : 'none';
+}
+
+function selectAllImport() {
+  parsedImportItems.forEach(it => it.selected = true);
+  renderImportPreview();
+}
+function selectNoneImport() {
+  parsedImportItems.forEach(it => it.selected = false);
+  renderImportPreview();
+}
+
+function applyBulk() {
+  const cat = document.getElementById('bulkCategory').value;
+  const person = document.getElementById('bulkPerson').value;
+  if (!cat) { showToast('Pick a category first'); return; }
+  let count = 0;
+  parsedImportItems.forEach((it, i) => {
+    if (!it.selected) return;
+    it.category = cat;
+    const needsAssign = CATEGORIES.find(c => c.name === cat)?.requiresAssignment;
+    if (needsAssign && person) it.assignedTo = person;
+    if (!needsAssign) it.assignedTo = '';
+    recheckDuplicate(i);
+    count++;
+  });
+  if (count === 0) { showToast('Select items first'); return; }
+  renderImportPreview();
+  showToast(`Updated ${count} items`);
+}
+
+// Bulk category dropdown toggles person dropdown
+document.addEventListener('DOMContentLoaded', () => {
+  const bc = document.getElementById('bulkCategory');
+  if (bc) bc.addEventListener('change', () => {
+    document.getElementById('bulkPerson').style.display =
+      bc.value === 'Clothes and Gear' ? 'inline-block' : 'none';
+  });
+});
+
+function toggleImportFlag(i, flag, btn) {
+  parsedImportItems[i][flag] = !parsedImportItems[i][flag];
+  if (flag === 'needToBuy') btn.classList.toggle('active-buy');
+  if (flag === 'alwaysBring') btn.classList.toggle('active-always');
+}
+
+function removeImportItem(i) {
+  parsedImportItems.splice(i, 1);
+  if (parsedImportItems.length === 0) { closeImportPreview(); return; }
+  renderImportPreview();
+}
+
+function closeImportPreview(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('importOverlay').classList.remove('open');
+}
+
+function confirmImport() {
+  // Filter out duplicates
+  const toImport = parsedImportItems.filter(it => !it.duplicate);
+  if (toImport.length === 0) { showToast('No new items to import'); return; }
+
+  const refs = getCurrentTripRefs();
+  if (!refs) return;
+  const updates = {};
+  for (const it of toImport) {
+    const needsAssign = CATEGORIES.find(c => c.name === it.category)?.requiresAssignment;
+    const key = refs.items.push().key;
+    updates[key] = {
+      name: it.name,
+      category: it.category,
+      quantity: it.quantity,
+      packed: false,
+      needToBuy: it.needToBuy,
+      alwaysBring: it.alwaysBring,
+      assignedTo: needsAssign ? (it.assignedTo || null) : null,
+      createdAt: Date.now()
+    };
+  }
+  refs.items.update(updates);
+  const skipped = parsedImportItems.length - toImport.length;
+  let msg = `${toImport.length} items imported`;
+  if (skipped > 0) msg += `, ${skipped} duplicates skipped`;
+  showToast(msg);
+
+  document.getElementById('importText').value = '';
+  document.getElementById('importSection').classList.remove('open');
+  closeImportPreview();
+  parsedImportItems = [];
+}
+
+// ══════════════════════════════════════════
+// Filters & Views
+// ══════════════════════════════════════════
+function filterCategory(cat, btn) {
+  currentFilter = cat;
+  document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+
+  // Clear exclusive view toggles
+  viewShoppingOnly = false;
+  viewToDoOnly = false;
+  viewAllItems = false;
+  const vt = { toggleShopping: false, toggleToDo: false, toggleAllItems: false };
+  for (const [id, _] of Object.entries(vt)) {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('active');
+  }
+
+  // In grid view, drill into the selected category (or back to dashboard for "all")
+  if (useGridView) {
+    if (cat === 'all') {
+      categoryDrillDownMode = null;
+    } else {
+      categoryDrillDownMode = cat;
+    }
+  }
+
+  renderCurrentMode();
+}
+
+function showNeedToBuy() {
+  switchMode('shopping');
+}
+
+function showAlwaysBring() {
+  const alwaysItems = Object.entries(items).filter(([, it]) => it.alwaysBring);
+  if (alwaysItems.length === 0) {
+    showToast('No "always bring" items yet');
+    return;
+  }
+  // Clear active toggles and show custom view
+  viewShoppingOnly = false;
+  viewUnpackedOnly = false;
+  viewToDoOnly = false;
+  viewAllItems = false;
+  document.getElementById('toggleShopping').classList.remove('active');
+  document.getElementById('toggleUnpacked').classList.remove('active');
+  document.getElementById('toggleToDo').classList.remove('active');
+  document.getElementById('toggleAllItems').classList.remove('active');
+
+  const main = document.getElementById('mainContent');
+  const packed = alwaysItems.filter(([, it]) => it.packed).length;
+  let html = `<div class="category-group"><div class="category-header" onclick="toggleCategoryCollapse(this.parentElement)">`;
+  html += `<div class="cat-info"><div class="cat-title-row"><h2>⭐ Always Bring</h2><span class="cat-count">${packed} of ${alwaysItems.length} packed</span></div>`;
+  const pct = Math.round((packed / alwaysItems.length) * 100);
+  html += `<div class="cat-progress"><div class="cat-progress-fill" style="width:${pct}%"></div></div></div>`;
+  html += `<span class="chevron">▼</span></div><div class="category-items">`;
+  html += alwaysItems.map(([id, it]) => renderItemRow(id, it)).join('');
+  html += '</div></div>';
+  main.innerHTML = html;
+}
+
+function resetAllPacked() {
+  // Redirect to settings version
+  resetForNextTrip();
+}
+
+function resetForNextTrip() {
+  const refs = getCurrentTripRefs();
+  if (!refs) return;
+  const packedItems = Object.entries(items).filter(([, it]) => it.packed);
+  if (packedItems.length === 0) {
+    showToast('Nothing to reset');
+    return;
+  }
+  if (!confirm(`Reset for next trip?\n\nThis will unpack all ${packedItems.length} packed items.\nYou can undo this within 24 hours.`)) return;
+
+  refs.state.child('lastResetSnapshot').set({
+    items: Object.fromEntries(packedItems.map(([id]) => [id, true])),
+    timestamp: Date.now()
+  });
+
+  const updates = {};
+  packedItems.forEach(([id]) => { updates[`${id}/packed`] = false; });
+  refs.items.update(updates);
+  closeSettings();
+  showToast('All items unpacked', true);
+  checkUndoResetAvailable();
+}
+
+// ══════════════════════════════════════════
+// Undo
+// ══════════════════════════════════════════
+function undoReset() {
+  const refs = getCurrentTripRefs();
+  if (!refs) return;
+  refs.state.child('lastResetSnapshot').once('value', (snap) => {
+    const snapshot = snap.val();
+    if (!snapshot || !snapshot.items) return;
+    const updates = {};
+    Object.keys(snapshot.items).forEach(id => { updates[`${id}/packed`] = true; });
+    refs.items.update(updates);
+    refs.state.child('lastResetSnapshot').remove();
+    showToast('Reset undone — packed states restored');
+    checkUndoResetAvailable();
+  });
+}
+
+function undoLastReset() {
+  const refs = getCurrentTripRefs();
+  if (!refs) return;
+  refs.state.child('lastResetSnapshot').once('value', (snap) => {
+    const snapshot = snap.val();
+    if (!snapshot || !snapshot.items) { showToast('No reset to undo'); return; }
+    const age = Date.now() - (snapshot.timestamp || 0);
+    if (age > 24 * 60 * 60 * 1000) {
+      showToast('Reset is older than 24 hours and can no longer be undone');
+      return;
+    }
+    const when = new Date(snapshot.timestamp).toLocaleString();
+    if (!confirm(`Restore packed states from reset at:\n${when}?`)) return;
+    const updates = {};
+    Object.keys(snapshot.items).forEach(id => { updates[`${id}/packed`] = true; });
+    refs.items.update(updates);
+    refs.state.child('lastResetSnapshot').remove();
+    closeSettings();
+    showToast('Reset undone — packed states restored');
+    checkUndoResetAvailable();
+  });
+}
+
+function checkUndoResetAvailable() {
+  const refs = getCurrentTripRefs();
+  if (!refs) return;
+  refs.state.child('lastResetSnapshot').once('value', (snap) => {
+    const snapshot = snap.val();
+    const el = document.getElementById('undoResetItem');
+    if (!el) return;
+    if (snapshot && snapshot.items && snapshot.timestamp) {
+      const age = Date.now() - snapshot.timestamp;
+      if (age < 24 * 60 * 60 * 1000) {
+        el.style.display = '';
+        const when = new Date(snapshot.timestamp).toLocaleString();
+        document.getElementById('undoResetDesc').textContent = `Reset at ${when}`;
+        return;
+      }
+    }
+    el.style.display = 'none';
+  });
+}
+
+// ══════════════════════════════════════════
+// Utilities
+// ══════════════════════════════════════════
+function escapeHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+let toastTimeout;
+function showToast(msg, undoable = false) {
+  const t = document.getElementById('toast');
+  t.innerHTML = msg + (undoable ? `<button onclick="undoReset()">Undo</button>` : '');
+  t.classList.add('show');
+  clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => t.classList.remove('show'), undoable ? 10000 : 3000);
+}
+
+// ══════════════════════════════════════════
+// Service Worker Registration
+// ══════════════════════════════════════════
+// ══════════════════════════════════════════
+// Mode Switching
+// ══════════════════════════════════════════
+function renderCurrentMode() {
+  if (currentMode === 'shopping') {
+    renderShoppingList();
+  } else {
+    renderItems();
+  }
+}
+
+function switchMode(mode) {
+  if (mode === 'shopping') {
+    viewShoppingOnly = true;
+    viewToDoOnly = false;
+    viewAllItems = false;
+    categoryDrillDownMode = null;
+    currentFilter = 'all';
+    document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+    const allPill = document.querySelector('.filter-pill');
+    if (allPill) allPill.classList.add('active');
+  } else {
+    viewShoppingOnly = false;
+  }
+  currentMode = 'packing'; // always stay in packing mode for unified rendering
+  document.getElementById('tabPacking').classList.toggle('active', !viewShoppingOnly);
+  document.getElementById('tabShopping').classList.toggle('active', viewShoppingOnly);
+  document.getElementById('tabPacking').setAttribute('aria-pressed', !viewShoppingOnly);
+  document.getElementById('tabShopping').setAttribute('aria-pressed', viewShoppingOnly);
+
+  document.getElementById('shoppingHeader').classList.remove('visible');
+
+  renderCurrentMode();
+  updateStats();
+}
+
+// ══════════════════════════════════════════
+// Shopping List
+// ══════════════════════════════════════════
+function renderShoppingList() {
+  const main = document.getElementById('mainContent');
+  const buyItems = Object.entries(items).filter(([, it]) => it.needToBuy);
+  const unpurchased = buyItems.filter(([, it]) => !it.packed || it.needToBuy);
+
+  // Update shopping count
+  const countEl = document.getElementById('shopCount');
+  if (countEl) countEl.textContent = buyItems.length;
+
+  if (buyItems.length === 0) {
+    main.innerHTML = `<div class="celebration-state" role="status">
+      <div class="celeb-icon">✅</div>
+      <p>Nothing to buy!</p>
+      <p class="celeb-sub">You're all set. Add items from the Packing List using the 🛒 icon.</p>
+    </div>`;
+    return;
+  }
+
+  // Group by category
+  let html = '';
+  for (const cat of CATEGORIES) {
+    const catItems = buyItems.filter(([, it]) => it.category === cat.name);
+    if (catItems.length === 0) continue;
+
+    html += `<div class="category-group">`;
+    html += `<div class="category-header" onclick="toggleCategoryCollapse(this.parentElement)">`;
+    html += `<div class="cat-info"><div class="cat-title-row"><h2>${cat.icon} ${cat.name}</h2><span class="cat-count">${catItems.length}</span></div></div>`;
+    html += `<span class="chevron">▼</span></div>`;
+    html += `<div class="category-items">`;
+
+    for (const [id, item] of catItems) {
+      html += `
+        <div class="shop-item" onclick="markPurchased('${id}', this)">
+          <div class="shop-checkbox"></div>
+          <div class="shop-name">${escapeHtml(item.name)}</div>
+          ${item.quantity > 1 ? `<span class="shop-qty">×${item.quantity}</span>` : ''}
+          ${item.assignedTo ? `<span class="shop-cat-label">${item.assignedTo}</span>` : ''}
+        </div>`;
+    }
+
+    html += `</div></div>`;
+  }
+  main.innerHTML = html;
+}
+
+function markPurchased(id, rowEl) {
+  const item = items[id];
+  if (!item) return;
+
+  // Animate
+  if (rowEl) rowEl.classList.add('purchasing');
+
+  // After animation, flip needToBuy to false (item stays in packing list)
+  setTimeout(() => {
+    const refs = getCurrentTripRefs();
+    if (refs) refs.items.child(id).update({ needToBuy: false });
+  }, 500);
+}
+
+function toggleNeedToBuy(id) {
+  const item = items[id];
+  if (!item) return;
+  const refs = getCurrentTripRefs();
+  if (!refs) return;
+  const newVal = !item.needToBuy;
+  refs.items.child(id).update({ needToBuy: newVal });
+  showToast(newVal ? 'Added to shopping list' : 'Removed from shopping list');
+}
+
+function shareShoppingList() {
+  const buyItems = Object.entries(items).filter(([, it]) => it.needToBuy);
+  if (buyItems.length === 0) { showToast('Shopping list is empty'); return; }
+
+  let text = 'Mammoth Shopping List:\n';
+  for (const cat of CATEGORIES) {
+    const catItems = buyItems.filter(([, it]) => it.category === cat.name);
+    if (catItems.length === 0) continue;
+    text += `\n${cat.name}:\n`;
+    for (const [, item] of catItems) {
+      const qty = item.quantity > 1 ? ` (x${item.quantity})` : '';
+      const who = item.assignedTo ? ` [${item.assignedTo}]` : '';
+      text += `- ${item.name}${qty}${who}\n`;
+    }
+  }
+
+  if (navigator.share) {
+    navigator.share({ title: 'Mammoth Shopping List', text }).catch(() => {
+      copyToClipboard(text);
+    });
+  } else {
+    copyToClipboard(text);
+  }
+}
+
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('Shopping list copied to clipboard');
+  }).catch(() => {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('Shopping list copied to clipboard');
+  });
+}
+
+// ══════════════════════════════════════════
+// Settings Menu
+// ══════════════════════════════════════════
+function openSettings() {
+  checkUndoResetAvailable();
+  // Sync toggle state
+  document.getElementById('toggleAlwaysTop').classList.toggle('on', sortAlwaysBringTop);
+  document.getElementById('settingsOverlay').classList.add('open');
+}
+
+function closeSettings(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('settingsOverlay').classList.remove('open');
+}
+
+function toggleAlwaysBringSort() {
+  sortAlwaysBringTop = !sortAlwaysBringTop;
+  saveSortPref();
+  document.getElementById('toggleAlwaysTop').classList.toggle('on', sortAlwaysBringTop);
+  renderCurrentMode();
+}
+
+// ══════════════════════════════════════════
+// Progress Bar
+// ══════════════════════════════════════════
+function updateProgressBar() {
+  const all = Object.values(items).filter(i => i.category !== 'To Do');
+  const total = all.length;
+  const packed = all.filter(i => i.packed).length;
+  const buy = all.filter(i => i.needToBuy).length;
+  const pct = total > 0 ? Math.round((packed / total) * 100) : 0;
+
+  document.getElementById('progressPacked').textContent = packed;
+  document.getElementById('progressTotal').textContent = total;
+  document.getElementById('progressPct').textContent = pct + '%';
+
+  const fill = document.getElementById('progressFill');
+  fill.style.width = pct + '%';
+  const bar = document.getElementById('progressBarEl');
+  if (bar) bar.setAttribute('aria-valuenow', pct);
+
+  // Color: red (0%) -> yellow (50%) -> green (100%)
+  if (pct <= 50) {
+    const r = 198;
+    const g = Math.round(40 + (pct / 50) * 160);
+    const b = 40;
+    fill.style.background = `rgb(${r},${g},${b})`;
+  } else {
+    const r = Math.round(198 - ((pct - 50) / 50) * 152);
+    const g = Math.round(200 - ((pct - 50) / 50) * 75);
+    const b = Math.round(40 + ((pct - 50) / 50) * 10);
+    fill.style.background = `rgb(${r},${g},${b})`;
+  }
+
+  // Shopping count note
+  const buyNote = document.getElementById('progressBuyNote');
+  if (buy > 0) {
+    buyNote.style.display = '';
+    document.getElementById('progressBuyCount').textContent = buy;
+  } else {
+    buyNote.style.display = 'none';
+  }
+
+  // Hide progress in shopping mode or when no items
+  document.getElementById('progressSection').classList.toggle('hidden', currentMode === 'shopping' || total === 0);
+}
+
+// ══════════════════════════════════════════
+// Collapse State Persistence
+// ══════════════════════════════════════════
+function saveCategoryCollapseState(catKey, collapsed) {
+  collapseStates[catKey] = collapsed;
+  if (currentTripId) {
+    localStorage.setItem('collapseStates_' + currentTripId, JSON.stringify(collapseStates));
+  }
+}
+
+function applyCategoryCollapseStates() {
+  document.querySelectorAll('.category-group').forEach(el => {
+    const id = el.id;
+    if (id && collapseStates[id]) {
+      el.classList.add('collapsed');
+    }
+  });
+}
+
+// ══════════════════════════════════════════
+// Pull to Refresh (mobile)
+// ══════════════════════════════════════════
+let pullState = { startY: 0, pulling: false };
+
+document.addEventListener('touchstart', (e) => {
+  // Only trigger when at the top of the page
+  if (window.scrollY > 5) return;
+  if (e.target.closest('.modal-overlay, .import-overlay, .settings-overlay')) return;
+  pullState.startY = e.touches[0].clientY;
+  pullState.pulling = false;
+}, { passive: true });
+
+document.addEventListener('touchmove', (e) => {
+  if (window.scrollY > 5 || !pullState.startY) return;
+  if (e.target.closest('.modal-overlay, .import-overlay, .settings-overlay')) return;
+  const dy = e.touches[0].clientY - pullState.startY;
+  const indicator = document.getElementById('pullIndicator');
+  const pullText = document.getElementById('pullText');
+
+  if (dy > 20 && dy < 150) {
+    pullState.pulling = true;
+    indicator.classList.add('pulling');
+    if (dy > 80) {
+      indicator.classList.add('ready');
+      pullText.textContent = 'Release to refresh';
+    } else {
+      indicator.classList.remove('ready');
+      pullText.textContent = 'Pull to refresh';
+    }
+  }
+}, { passive: true });
+
+document.addEventListener('touchend', () => {
+  const indicator = document.getElementById('pullIndicator');
+  if (!pullState.pulling) return;
+  if (indicator.classList.contains('ready')) {
+    // Do refresh
+    indicator.classList.remove('ready');
+    document.getElementById('pullText').textContent = 'Refreshing...';
+    // Re-render from current Firebase cache
+    renderCurrentMode();
+    updateStats();
+    setTimeout(() => {
+      indicator.classList.remove('pulling');
+    }, 600);
+  } else {
+    indicator.classList.remove('pulling');
+    indicator.classList.remove('ready');
+  }
+  pullState.startY = 0;
+  pullState.pulling = false;
+});
+
+// ══════════════════════════════════════════
+// Routing
+// ══════════════════════════════════════════
+let currentView = 'home'; // 'home' or 'trip'
+
+function parseRoute() {
+  const hash = location.hash || '#/';
+  if (hash.startsWith('#/trip/')) {
+    const id = hash.slice(7);
+    return { view: 'trip', tripId: id };
+  }
+  return { view: 'home' };
+}
+
+function navigate(path) {
+  location.hash = path;
+}
+
+function handleRouteChange() {
+  const route = parseRoute();
+  if (route.view === 'trip' && route.tripId) {
+    showTripView(route.tripId);
+  } else {
+    showHomeScreen();
+  }
+}
+
+window.addEventListener('hashchange', handleRouteChange);
+
+// ══════════════════════════════════════════
+// View Management
+// ══════════════════════════════════════════
+function showHomeScreen() {
+  currentView = 'home';
+  detachTripListeners();
+  currentTripId = null;
+  items = {};
+
+  document.body.classList.add('on-home');
+  document.getElementById('homeScreen').classList.add('active');
+  document.getElementById('homeScreen').classList.add('view-fade-in');
+  document.getElementById('tripView').classList.remove('active');
+  document.getElementById('headerBackBtn').classList.remove('visible');
+  document.getElementById('fabCreateTrip').classList.add('visible');
+  document.getElementById('headerTitleText').textContent = 'Gabriel Family Trips';
+  document.getElementById('headerIcon').textContent = '🧳';
+
+  renderTripGrid();
+}
+
+let _tripViewRetries = 0;
+function showTripView(tripId) {
+  // Verify trip exists
+  if (!trips[tripId]) {
+    if (_tripViewRetries < 3) {
+      // Trip may not be loaded yet, wait briefly
+      _tripViewRetries++;
+      setTimeout(() => {
+        if (trips[tripId]) {
+          _tripViewRetries = 0;
+          showTripView(tripId);
+        } else if (_tripViewRetries >= 3) {
+          _tripViewRetries = 0;
+          showToast('Trip not found');
+          navigate('/');
+        }
+      }, 500);
+      return;
+    }
+    _tripViewRetries = 0;
+    showToast('Trip not found');
+    navigate('/');
+    return;
+  }
+  _tripViewRetries = 0;
+
+  currentView = 'trip';
+  const trip = trips[tripId];
+
+  document.body.classList.remove('on-home');
+  document.getElementById('homeScreen').classList.remove('active');
+  document.getElementById('tripView').classList.add('active');
+  document.getElementById('tripView').classList.add('view-fade-in');
+  document.getElementById('headerBackBtn').classList.add('visible');
+  document.getElementById('fabCreateTrip').classList.remove('visible');
+
+  // Update header
+  document.getElementById('headerTitleText').textContent = trip.name || 'Trip';
+  document.getElementById('headerIcon').textContent = trip.icon || '🧳';
+
+  // Reset filters/mode
+  currentFilter = 'all';
+  viewUnpackedOnly = false;
+  viewShoppingOnly = false;
+  viewToDoOnly = false;
+  viewAllItems = false;
+  personFilterValue = '';
+  currentMode = 'packing';
+  document.getElementById('toggleUnpacked')?.classList.remove('active');
+  document.getElementById('toggleToDo')?.classList.remove('active');
+  document.getElementById('toggleAllItems')?.classList.remove('active');
+  document.getElementById('toggleShopping')?.classList.remove('active');
+  document.getElementById('personFilter').value = '';
+  switchMode('packing');
+
+  attachTripListeners(tripId);
+}
+
+// ══════════════════════════════════════════
+// Home Screen Rendering
+// ══════════════════════════════════════════
+function renderTripGrid() {
+  const grid = document.getElementById('tripGrid');
+  const empty = document.getElementById('homeEmpty');
+  const tripEntries = Object.entries(trips);
+
+  if (tripEntries.length === 0) {
+    grid.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  // Sort by lastUsedAt descending
+  tripEntries.sort((a, b) => (b[1].lastUsedAt || 0) - (a[1].lastUsedAt || 0));
+
+  grid.innerHTML = tripEntries.map(([id, trip]) => {
+    const count = trip.itemCount || 0;
+    const color = trip.color || '#1a3a5c';
+    const icon = trip.icon || '🧳';
+    const timeAgo = trip.lastUsedAt ? getRelativeTime(trip.lastUsedAt) : '';
+    return `<div class="trip-card" onclick="navigate('/trip/${id}')">
+      <div class="trip-card-accent" style="background:${escapeHtml(color)}"></div>
+      <button class="trip-card-menu" onclick="event.stopPropagation();openTripSettings('${id}')">⋮</button>
+      <div class="trip-card-body">
+        <div class="trip-card-icon">${icon}</div>
+        <div class="trip-card-name">${escapeHtml(trip.name || 'Untitled')}</div>
+        <div class="trip-card-stats">${count} item${count !== 1 ? 's' : ''}${timeAgo ? ' · ' + timeAgo : ''}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function getRelativeTime(ts) {
+  const diff = Date.now() - ts;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return mins + 'm ago';
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return days + 'd ago';
+  return new Date(ts).toLocaleDateString();
+}
+
+// ══════════════════════════════════════════
+// Trip CRUD
+// ══════════════════════════════════════════
+let createTripIcon = '🏔️';
+let createTripColor = '#1a3a5c';
+
+function openCreateTripModal() {
+  createTripIcon = '🏔️';
+  createTripColor = '#1a3a5c';
+  document.getElementById('createTripName').value = '';
+  document.getElementById('cloneCheckbox').checked = false;
+  document.getElementById('cloneSourceTrip').style.display = 'none';
+  document.getElementById('createTripTitle').textContent = 'Create New Trip';
+
+  // Reset icon/color pickers
+  document.querySelectorAll('.icon-pick').forEach(b => b.classList.toggle('selected', b.dataset.icon === createTripIcon));
+  document.querySelectorAll('.color-pick').forEach(b => b.classList.toggle('selected', b.dataset.color === createTripColor));
+
+  // Populate clone source
+  const sel = document.getElementById('cloneSourceTrip');
+  sel.innerHTML = '<option value="">Select a trip...</option>' +
+    Object.entries(trips).map(([id, t]) => `<option value="${id}">${escapeHtml(t.name || 'Untitled')}</option>`).join('');
+
+  document.getElementById('createTripOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('createTripName').focus(), 200);
+}
+
+function closeCreateTripModal(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('createTripOverlay').classList.remove('open');
+}
+
+function pickIcon(btn) {
+  createTripIcon = btn.dataset.icon;
+  document.querySelectorAll('.icon-pick').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+
+function pickColor(el) {
+  createTripColor = el.dataset.color;
+  document.querySelectorAll('.color-pick').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function toggleCloneSelect() {
+  const checked = document.getElementById('cloneCheckbox').checked;
+  document.getElementById('cloneSourceTrip').style.display = checked ? 'block' : 'none';
+}
+
+function saveTrip() {
+  const name = document.getElementById('createTripName').value.trim();
+  if (!name) { document.getElementById('createTripName').focus(); return; }
+
+  const tripData = {
+    name,
+    icon: createTripIcon,
+    color: createTripColor,
+    createdAt: firebase.database.ServerValue.TIMESTAMP,
+    lastUsedAt: firebase.database.ServerValue.TIMESTAMP,
+    itemCount: 0
+  };
+
+  const newRef = db.ref('trips').push(tripData);
+  const newId = newRef.key;
+
+  const shouldClone = document.getElementById('cloneCheckbox').checked;
+  const sourceId = document.getElementById('cloneSourceTrip').value;
+
+  if (shouldClone && sourceId && trips[sourceId]) {
+    cloneTripData(sourceId, newId).then(() => {
+      closeCreateTripModal();
+      showToast('Trip created from clone');
+      navigate('/trip/' + newId);
+    });
+  } else {
+    closeCreateTripModal();
+    showToast('Trip created');
+    navigate('/trip/' + newId);
+  }
+}
+
+function cloneTripData(sourceId, destId) {
+  return db.ref('trips/' + sourceId).once('value').then(snap => {
+    const src = snap.val();
+    if (!src) return;
+    const updates = {};
+    // Clone items with packed=false
+    if (src.items) {
+      Object.entries(src.items).forEach(([, item]) => {
+        const key = db.ref('trips/' + destId + '/items').push().key;
+        updates['trips/' + destId + '/items/' + key] = {
+          ...item,
+          packed: false,
+          createdAt: Date.now()
+        };
+      });
+      updates['trips/' + destId + '/itemCount'] = Object.keys(src.items).length;
+    }
+    // Clone categories
+    if (src.categories) {
+      updates['trips/' + destId + '/categories'] = src.categories;
+    }
+    return db.ref().update(updates);
+  });
+}
+
+function openTripSettings(tripId) {
+  tripSettingsTargetId = tripId;
+  document.getElementById('tripSettingsOverlay').classList.add('open');
+}
+
+function closeTripSettings(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('tripSettingsOverlay').classList.remove('open');
+  tripSettingsTargetId = null;
+}
+
+function renameTripPrompt() {
+  const id = tripSettingsTargetId;
+  if (!id || !trips[id]) return;
+  const newName = prompt('Rename trip:', trips[id].name || '');
+  if (newName && newName.trim()) {
+    db.ref('trips/' + id).update({ name: newName.trim() });
+    if (currentTripId === id) {
+      document.getElementById('headerTitleText').textContent = newName.trim();
+    }
+    showToast('Trip renamed');
+  }
+  closeTripSettings();
+}
+
+function changeIconColorPrompt() {
+  const id = tripSettingsTargetId;
+  if (!id || !trips[id]) return;
+  closeTripSettings();
+  // Reuse create modal in edit mode
+  createTripIcon = trips[id].icon || '🏔️';
+  createTripColor = trips[id].color || '#1a3a5c';
+  document.getElementById('createTripName').value = trips[id].name || '';
+  document.getElementById('createTripTitle').textContent = 'Edit Trip';
+  document.getElementById('cloneCheckbox').checked = false;
+  document.getElementById('cloneSourceTrip').style.display = 'none';
+  document.querySelectorAll('.icon-pick').forEach(b => b.classList.toggle('selected', b.dataset.icon === createTripIcon));
+  document.querySelectorAll('.color-pick').forEach(b => b.classList.toggle('selected', b.dataset.color === createTripColor));
+
+  // Override save button temporarily
+  const overlay = document.getElementById('createTripOverlay');
+  overlay.classList.add('open');
+  const saveBtn = overlay.querySelector('.btn-primary');
+  saveBtn.textContent = 'Save Changes';
+  saveBtn.onclick = function() {
+    const name = document.getElementById('createTripName').value.trim();
+    if (!name) return;
+    db.ref('trips/' + id).update({ name, icon: createTripIcon, color: createTripColor });
+    if (currentTripId === id) {
+      document.getElementById('headerTitleText').textContent = name;
+      document.getElementById('headerIcon').textContent = createTripIcon;
+    }
+    closeCreateTripModal();
+    saveBtn.textContent = 'Create Trip';
+    saveBtn.onclick = saveTrip;
+    showToast('Trip updated');
+  };
+}
+
+function cloneTripPrompt() {
+  const id = tripSettingsTargetId;
+  if (!id || !trips[id]) return;
+  const name = prompt('Name for cloned trip:', trips[id].name + ' (copy)');
+  if (!name || !name.trim()) { closeTripSettings(); return; }
+  closeTripSettings();
+
+  const tripData = {
+    name: name.trim(),
+    icon: trips[id].icon || '🏔️',
+    color: trips[id].color || '#1a3a5c',
+    createdAt: firebase.database.ServerValue.TIMESTAMP,
+    lastUsedAt: firebase.database.ServerValue.TIMESTAMP,
+    itemCount: 0
+  };
+  const newRef = db.ref('trips').push(tripData);
+  cloneTripData(id, newRef.key).then(() => {
+    showToast('Trip cloned');
+    navigate('/trip/' + newRef.key);
+  });
+}
+
+function deleteTripConfirm() {
+  const id = tripSettingsTargetId;
+  if (!id || !trips[id]) return;
+  if (!confirm(`Delete "${trips[id].name}"?\n\nThis will permanently remove the trip and all its items.`)) {
+    closeTripSettings();
+    return;
+  }
+  db.ref('trips/' + id).remove();
+  closeTripSettings();
+  showToast('Trip deleted');
+  if (currentTripId === id) {
+    navigate('/');
+  }
+}
+
+// ══════════════════════════════════════════
+// Migration (one-time, from flat structure)
+// ══════════════════════════════════════════
+function migrateIfNeeded() {
+  return db.ref('items').once('value').then(itemsSnap => {
+    const oldItems = itemsSnap.val();
+    if (!oldItems) return null; // no old data
+
+    return db.ref('trips').once('value').then(tripsSnap => {
+      if (tripsSnap.val()) return null; // trips already exist, no migration needed
+
+      // Migrate
+      const newTripRef = db.ref('trips').push();
+      const newId = newTripRef.key;
+      const updates = {};
+
+      updates['trips/' + newId + '/name'] = 'Mammoth Winter';
+      updates['trips/' + newId + '/icon'] = '❄️';
+      updates['trips/' + newId + '/color'] = '#1a3a5c';
+      updates['trips/' + newId + '/createdAt'] = firebase.database.ServerValue.TIMESTAMP;
+      updates['trips/' + newId + '/lastUsedAt'] = firebase.database.ServerValue.TIMESTAMP;
+      updates['trips/' + newId + '/itemCount'] = Object.keys(oldItems).length;
+
+      // Copy items
+      Object.entries(oldItems).forEach(([key, val]) => {
+        updates['trips/' + newId + '/items/' + key] = val;
+      });
+
+      // Copy categories if they exist
+      return db.ref('categories').once('value').then(catSnap => {
+        const cats = catSnap.val();
+        if (cats) {
+          updates['trips/' + newId + '/categories'] = cats;
+        }
+
+        // Copy appState
+        return db.ref('appState').once('value').then(stateSnap => {
+          const st = stateSnap.val();
+          if (st) {
+            updates['trips/' + newId + '/appState'] = st;
+          }
+
+          // Write new structure
+          return db.ref().update(updates).then(() => {
+            // Delete old root-level data
+            return Promise.all([
+              db.ref('items').remove(),
+              db.ref('categories').remove(),
+              db.ref('appState').remove()
+            ]).then(() => {
+              showToast('Data migrated to new multi-trip format!');
+              return newId;
+            });
+          });
+        });
+      });
+    });
+  });
+}
+
+// ══════════════════════════════════════════
+// Keyboard Navigation
+// ══════════════════════════════════════════
+document.addEventListener('keydown', (e) => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('view-toggle')) {
+    e.preventDefault();
+    e.target.click();
+  }
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('item-row')) {
+    e.preventDefault();
+    e.target.click();
+  }
+  if (e.key === 'Escape') {
+    if (document.getElementById('tripSettingsOverlay').classList.contains('open')) closeTripSettings();
+    else if (document.getElementById('createTripOverlay').classList.contains('open')) closeCreateTripModal();
+    else if (document.getElementById('settingsOverlay').classList.contains('open')) closeSettings();
+    else if (document.getElementById('modalOverlay').classList.contains('open')) closeModal();
+    else if (document.getElementById('importOverlay').classList.contains('open')) closeImportPreview();
+    else if (document.getElementById('newCatOverlay').classList.contains('open')) closeNewCatModal();
+  }
+});
+
+// ══════════════════════════════════════════
+// Init
+// ══════════════════════════════════════════
+rebuildCategoryDropdowns();
+rebuildFilterPills();
+
+// ── Query param redirect (?trip=ID → #/trip/ID) ──
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  const tripParam = params.get('trip');
+  if (tripParam) {
+    // Clean the URL and redirect to hash route
+    window.history.replaceState({}, '', window.location.pathname + '#/trip/' + tripParam);
+  }
+})();
+
+// ── Family site link ──
+if (FAMILY_SITE_URL) {
+  const linkEl = document.getElementById('familySiteLink');
+  if (linkEl) {
+    linkEl.style.display = '';
+    try {
+      const url = new URL(FAMILY_SITE_URL);
+      document.getElementById('familySiteLinkDesc').textContent = url.hostname;
+    } catch(e) {
+      document.getElementById('familySiteLinkDesc').textContent = FAMILY_SITE_URL;
+    }
+  }
+}
+
+function goToFamilySite() {
+  if (FAMILY_SITE_URL) window.location.href = FAMILY_SITE_URL;
+}
+
+function hideLoadingScreen() {
+  const ls = document.getElementById('loadingScreen');
+  if (ls) {
+    ls.classList.add('hidden');
+    setTimeout(() => ls.remove(), 500);
+  }
+}
+
+// Run migration then handle initial route
+migrateIfNeeded().then(migratedTripId => {
+  if (migratedTripId) {
+    navigate('/trip/' + migratedTripId);
+    hideLoadingScreen();
+  } else {
+    // Wait for trips to load, then handle route
+    db.ref('trips').once('value', () => {
+      handleRouteChange();
+      hideLoadingScreen();
+    });
+  }
+}).catch(() => {
+  // On error, still show the app
+  handleRouteChange();
+  hideLoadingScreen();
+});
+
+// Fallback: hide loading screen after 5s no matter what
+setTimeout(hideLoadingScreen, 5000);
+
+// ══════════════════════════════════════════
+// Online / Offline Detection
+// ══════════════════════════════════════════
+let isOnline = navigator.onLine;
+let wasOffline = false;
+
+function updateOnlineStatus() {
+  const nowOnline = navigator.onLine;
+  const headerEl = document.querySelector('header');
+  const offlineBanner = document.getElementById('offlineBanner');
+  const syncBanner = document.getElementById('syncBanner');
+  const syncText = document.getElementById('syncText');
+
+  if (!nowOnline) {
+    // Going offline
+    isOnline = false;
+    wasOffline = true;
+    headerEl.classList.add('offline');
+    offlineBanner.classList.add('visible');
+    syncBanner.classList.remove('visible');
+  } else if (!isOnline && nowOnline) {
+    // Coming back online
+    isOnline = true;
+    headerEl.classList.remove('offline');
+    offlineBanner.classList.remove('visible');
+
+    if (wasOffline) {
+      // Show syncing feedback
+      syncText.textContent = 'Syncing...';
+      syncBanner.classList.add('visible');
+      // Firebase RTDB auto-syncs queued writes on reconnect.
+      // Give it a moment then show success.
+      setTimeout(() => {
+        syncText.textContent = 'All changes synced ✓';
+        setTimeout(() => {
+          syncBanner.classList.remove('visible');
+          wasOffline = false;
+        }, 2500);
+      }, 1500);
+    }
+  }
+}
+
+window.addEventListener('online', updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+
+// Also monitor Firebase connection state for more accurate detection
+db.ref('.info/connected').on('value', (snap) => {
+  const connected = snap.val();
+  const headerEl = document.querySelector('header');
+  const offlineBanner = document.getElementById('offlineBanner');
+  const syncBanner = document.getElementById('syncBanner');
+  const syncText = document.getElementById('syncText');
+
+  if (connected === false && isOnline) {
+    // Firebase disconnected but browser thinks online (e.g., server unreachable)
+    headerEl.classList.add('offline');
+    offlineBanner.classList.add('visible');
+    wasOffline = true;
+  } else if (connected === true) {
+    headerEl.classList.remove('offline');
+    offlineBanner.classList.remove('visible');
+    if (wasOffline) {
+      syncText.textContent = 'Syncing...';
+      syncBanner.classList.add('visible');
+      setTimeout(() => {
+        syncText.textContent = 'All changes synced ✓';
+        setTimeout(() => {
+          syncBanner.classList.remove('visible');
+          wasOffline = false;
+        }, 2500);
+      }, 1500);
+    }
+  }
+});
+
+// Set initial state
+if (!navigator.onLine) {
+  updateOnlineStatus();
+}
+
+// ══════════════════════════════════════════
+// Service Worker Registration
+// ══════════════════════════════════════════
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').then(reg => {
+    // Check for updates periodically
+    setInterval(() => reg.update(), 60 * 60 * 1000);
+  }).catch(() => {
+    console.log('Service worker not found — offline mode unavailable');
+  });
+}
+</script>
+</body>
+</html>
