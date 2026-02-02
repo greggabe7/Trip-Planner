@@ -1610,6 +1610,8 @@
   .item-card-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 3px; }
   .item-card-qty { font-size: 11px; color: var(--gray-light); background: var(--snow-gray); padding: 1px 6px; border-radius: 6px; font-weight: 600; }
   .item-card-indicators { display: flex; gap: 3px; font-size: 12px; }
+  .item-card-cart { background: none; border: none; font-size: 14px; cursor: pointer; opacity: 0.3; padding: 2px; border-radius: 4px; transition: all .15s; }
+  .item-card-cart.in-cart { opacity: 1; background: #fff3e0; border-radius: 4px; }
 
   .item-card-actions {
     position: absolute; top: 0; right: 0; bottom: 0; left: 0;
@@ -1661,7 +1663,10 @@
       <button class="header-back-btn" id="headerBackBtn" onclick="navigate('/')" aria-label="Back to trips">←</button>
       <h1><span class="mountain" aria-hidden="true" id="headerIcon">🧳</span> <span id="headerTitleText">Gabriel Family Trips</span></h1>
     </div>
-    <button class="settings-btn" onclick="openSettings()" aria-label="Open settings menu">⚙️</button>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <a href="https://gabrielfamilywebsite.netlify.app" style="font-size:20px;text-decoration:none;" title="Back to Family Site">🏠</a>
+      <button class="settings-btn" onclick="openSettings()" aria-label="Open settings menu">⚙️</button>
+    </div>
   </div>
   <div class="header-stats" id="headerStats" aria-live="polite">
     <span id="stat-total">0 items</span>
@@ -2027,7 +2032,7 @@
 // ══════════════════════════════════════════
 // Set this to your family website URL to show a "Back to Family Site" link in Settings.
 // Leave empty string to hide the link.
-const FAMILY_SITE_URL = "";
+const FAMILY_SITE_URL = "https://gabrielfamilywebsite.netlify.app";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBMPWTiaRA6oN563V8L7i2r3JSoodPzMsI",
@@ -2534,10 +2539,45 @@ function renderShoppingGrid(filteredItems) {
       <button class="category-back-btn" onclick="switchMode('packing')">←</button>
       <div class="category-expanded-title"><span>🛒</span><span>Shopping List</span></div>
       <div class="category-expanded-count">${total} items</div>
+      <div style="margin-left:auto;text-align:center;">
+        <button onclick="exportShoppingList()" style="padding:6px 12px;border-radius:8px;border:none;background:var(--primary);color:#fff;font-size:13px;cursor:pointer;">📤 Export</button>
+        <div style="font-size:10px;color:var(--gray-light);margin-top:2px;">Export List</div>
+      </div>
     </div>
     <div class="items-grid">${sorted.map(([id, it]) => renderItemCard(id, it)).join('')}</div>
   </div>`;
   main.innerHTML = html;
+}
+
+function exportShoppingList() {
+  const buyItems = Object.entries(items).filter(([, it]) => it.needToBuy);
+  if (buyItems.length === 0) { showToast('No items on shopping list'); return; }
+
+  // Group by category
+  const grouped = {};
+  for (const [, it] of buyItems) {
+    const cat = it.category || 'Uncategorized';
+    if (!grouped[cat]) grouped[cat] = [];
+    const qty = it.quantity > 1 ? ` (x${it.quantity})` : '';
+    grouped[cat].push(`- ${it.name}${qty}`);
+  }
+
+  let md = `# 🛒 Shopping List\n\n`;
+  for (const [cat, items] of Object.entries(grouped)) {
+    const catObj = CATEGORIES.find(c => c.name === cat);
+    const icon = catObj ? catObj.icon + ' ' : '';
+    md += `## ${icon}${cat}\n${items.join('\n')}\n\n`;
+  }
+  md += `---\n*Exported ${new Date().toLocaleDateString()}*\n`;
+
+  const blob = new Blob([md], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'shopping-list.md';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Shopping list exported');
 }
 
 function renderItemCard(id, item) {
@@ -2547,7 +2587,6 @@ function renderItemCard(id, item) {
   if (item.alwaysBring && !item.packed) classes.push('always-highlight');
 
   let indicators = '';
-  if (item.needToBuy) indicators += '<span>🛒</span>';
   if (item.alwaysBring) indicators += '<span>⭐</span>';
 
   const catOpts = CATEGORIES.map(c =>
@@ -2562,6 +2601,7 @@ function renderItemCard(id, item) {
     <div class="item-card-bottom">
       ${item.quantity > 1 ? `<span class="item-card-qty">&times;${item.quantity}</span>` : '<span></span>'}
       <div class="item-card-indicators">${indicators}</div>
+      <button class="item-card-cart${item.needToBuy ? ' in-cart' : ''}" onclick="event.stopPropagation();toggleNeedToBuy('${id}')" title="${item.needToBuy ? 'Remove from shopping list' : 'Add to shopping list'}">🛒</button>
     </div>
     <div class="item-card-actions">
       <div class="item-card-actions-row">
