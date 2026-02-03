@@ -1726,6 +1726,10 @@
 <div class="settings-overlay" id="settingsOverlay" onclick="closeSettings(event)">
   <div class="settings-panel" onclick="event.stopPropagation()">
     <h3>Settings <button onclick="closeSettings()">✕</button></h3>
+    <div class="settings-item" onclick="renameTrip()">
+      <div class="si-title">✏️ Rename Trip</div>
+      <div class="si-desc">Change the name of this trip</div>
+    </div>
     <div class="settings-item" onclick="resetForNextTrip()">
       <div class="si-title">🔄 Reset for Next Trip</div>
       <div class="si-desc">Unpack all items. Saves a snapshot you can undo.</div>
@@ -1788,6 +1792,7 @@
         <option value="Condo Stuff">Condo Stuff</option>
         <option value="Kids Entertainment">Kids Entertainment</option>
         <option value="Dog List">Dog List</option>
+        <option value="Dad's Stuff">Dad's Stuff</option>
         <option value="Miscellaneous">Miscellaneous</option>
         <option value="To Do">To Do</option>
       </select>
@@ -2060,6 +2065,7 @@ const DEFAULT_CATEGORIES = [
   { name: 'Condo Stuff', icon: '🏠', requiresAssignment: false },
   { name: 'Kids Entertainment', icon: '🎮', requiresAssignment: false },
   { name: 'Dog List', icon: '🐕', requiresAssignment: false },
+  { name: "Dad's Stuff", icon: '🧔', requiresAssignment: false },
   { name: 'Miscellaneous', icon: '📦', requiresAssignment: false },
   { name: 'To Do', icon: '✅', requiresAssignment: false }
 ];
@@ -4185,6 +4191,17 @@ function cloneTripPrompt() {
     showToast('Trip cloned');
     navigate('/trip/' + newRef.key);
   });
+}
+
+function renameTrip() {
+  if (!currentTripId || !trips[currentTripId]) return;
+  const current = trips[currentTripId].name || '';
+  const newName = prompt('Rename trip:', current);
+  if (!newName || !newName.trim() || newName.trim() === current) return;
+  db.ref('trips/' + currentTripId + '/name').set(newName.trim());
+  document.getElementById('headerTitleText').textContent = newName.trim();
+  showToast('Trip renamed');
+  closeSettings();
 }
 
 function deleteTripConfirm() {
