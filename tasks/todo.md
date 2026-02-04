@@ -12,6 +12,8 @@
 - [x] **Feature**: Added offline queue with localStorage backup for data safety
 - [x] **Feature**: Added category reordering via drag-and-drop (persisted to Firebase)
 - [x] **Feature**: Added export to PDF with print-optimized checklist layout
+- [x] **Feature**: Added direct drag-and-drop on category cards (dashboard view)
+- [x] **Feature**: Added "Packed" filter toggle (mutually exclusive with Unpacked)
 
 ---
 
