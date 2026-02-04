@@ -152,6 +152,44 @@
   }
   .header-stats span { display: flex; align-items: center; gap: 4px; }
 
+  /* ── Countdown Banner ── */
+  .countdown-banner {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 6px 16px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 8px;
+    margin-top: 8px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .countdown-banner.visible { display: flex; }
+  .countdown-banner .countdown-days {
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .countdown-banner .countdown-label {
+    opacity: 0.9;
+  }
+  .countdown-banner.today {
+    background: rgba(46, 125, 50, 0.3);
+  }
+  .countdown-banner.past {
+    background: rgba(198, 40, 40, 0.2);
+  }
+  .countdown-banner .edit-date-btn {
+    background: none;
+    border: none;
+    font-size: 12px;
+    cursor: pointer;
+    opacity: 0.7;
+    padding: 2px 6px;
+    margin-left: 4px;
+  }
+  .countdown-banner .edit-date-btn:hover { opacity: 1; }
+
   /* ── Toolbar ── */
   .toolbar {
     display: flex;
@@ -758,6 +796,80 @@
   }
   .empty-state .mountain-icon { font-size: 48px; margin-bottom: 12px; }
   .empty-state p { font-size: 15px; }
+
+  /* ── Search Bar ── */
+  .search-bar {
+    padding: 8px 16px;
+    display: flex;
+    justify-content: center;
+  }
+  .search-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 400px;
+  }
+  .search-input {
+    width: 100%;
+    padding: 10px 36px 10px 36px;
+    border: 1px solid var(--snow-gray);
+    border-radius: 20px;
+    font-size: 14px;
+    font-family: inherit;
+    background: #fff;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .search-input:focus {
+    outline: none;
+    border-color: var(--blue-mid);
+    box-shadow: 0 0 0 3px rgba(74, 144, 196, 0.15);
+  }
+  .search-input::placeholder {
+    color: var(--gray-light);
+  }
+  .search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 14px;
+    color: var(--gray-light);
+    pointer-events: none;
+  }
+  .search-clear {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--snow-gray);
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    color: var(--gray-text);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  .search-clear.visible {
+    display: flex;
+  }
+  .search-clear:hover {
+    background: var(--gray-light);
+    color: #fff;
+  }
+  .search-results-info {
+    text-align: center;
+    font-size: 12px;
+    color: var(--gray-light);
+    padding: 4px 16px 0;
+  }
+  .search-results-info .highlight {
+    color: var(--blue-mid);
+    font-weight: 600;
+  }
 
   /* ── Filter Bar ── */
   .filter-bar {
@@ -1392,6 +1504,8 @@
   .fab-create-trip.visible { display: flex; }
 
   /* ── Hide trip-specific UI on home ── */
+  body.on-home .search-bar,
+  body.on-home .search-results-info,
   body.on-home .filter-bar,
   body.on-home .view-toggles,
   body.on-home .progress-section,
@@ -1399,6 +1513,7 @@
   body.on-home .shopping-header,
   body.on-home .mode-tabs,
   body.on-home .header-stats,
+  body.on-home .countdown-banner,
   body.on-home #pullIndicator { display: none !important; }
 
   /* ── Create Trip Modal ── */
@@ -1633,6 +1748,32 @@
     padding: 4px 8px; font-size: 12px; cursor: pointer; max-width: 140px;
   }
 
+  /* Non-packable items (like Meal Ideas) */
+  .item-card.not-packable {
+    cursor: default;
+    background: #fafbfc;
+    border-color: #e0e4e8;
+  }
+  .item-card.not-packable:active { background: #fafbfc; }
+  .item-card-bullet {
+    font-size: 18px;
+    color: var(--blue-mid);
+    line-height: 1;
+    margin-right: 2px;
+  }
+  .item-card.not-packable .item-card-name {
+    color: #444;
+  }
+  .item-card-edit {
+    background: none;
+    border: none;
+    font-size: 12px;
+    cursor: pointer;
+    opacity: 0.4;
+    padding: 2px;
+  }
+  .item-card-edit:hover { opacity: 1; }
+
   .person-subgroup-grid .person-header {
     padding: 6px 12px; margin: 0 12px 4px; font-size: 13px; font-weight: 600; color: var(--blue-dark);
   }
@@ -1674,6 +1815,12 @@
     <span id="stat-packed">0 packed</span>
     <span aria-hidden="true">·</span>
     <span id="stat-buy" style="color:#ffb74d">0 to buy</span>
+  </div>
+  <div class="countdown-banner" id="countdownBanner">
+    <span>🗓️</span>
+    <span class="countdown-days" id="countdownDays">0</span>
+    <span class="countdown-label" id="countdownLabel">days until trip</span>
+    <button class="edit-date-btn" onclick="openDatePicker()" title="Change departure date">✏️</button>
   </div>
   <nav class="mode-tabs" aria-label="View mode">
     <button class="mode-tab active" id="tabPacking" onclick="switchMode('packing')" aria-pressed="true">📦 Packing List</button>
@@ -1729,6 +1876,11 @@
     <div class="settings-item" onclick="renameTrip()">
       <div class="si-title">✏️ Rename Trip</div>
       <div class="si-desc">Change the name of this trip</div>
+    </div>
+    <div class="settings-item settings-date-item">
+      <div class="si-title">🗓️ Departure Date</div>
+      <div class="si-desc">Set when the trip starts for countdown</div>
+      <input type="date" id="departureDateInput" onchange="saveDepartureDate(this.value)" style="margin-top:8px;padding:8px 12px;border:1px solid var(--snow-gray);border-radius:8px;font-size:14px;width:100%;">
     </div>
     <div class="settings-item" onclick="resetForNextTrip()">
       <div class="si-title">🔄 Reset for Next Trip</div>
@@ -1821,6 +1973,16 @@
     </div>
   </div>
 </div>
+
+<!-- ── Search Bar ── -->
+<div class="search-bar">
+  <div class="search-wrapper">
+    <span class="search-icon" aria-hidden="true">🔍</span>
+    <input type="text" class="search-input" id="searchInput" placeholder="Search items..." oninput="handleSearch(this.value)" aria-label="Search items">
+    <button class="search-clear" id="searchClear" onclick="clearSearch()" aria-label="Clear search">✕</button>
+  </div>
+</div>
+<div class="search-results-info" id="searchResultsInfo"></div>
 
 <!-- ── Filter Bar ── -->
 <div class="filter-bar" role="toolbar" aria-label="Category filters">
@@ -1939,7 +2101,7 @@
   <div class="modal" onclick="event.stopPropagation()">
     <h3 id="modalTitle">Add Item</h3>
     <label>Item Name</label>
-    <input type="text" id="itemName" placeholder="e.g. Snow boots" autocomplete="off">
+    <input type="text" id="itemName" placeholder="e.g. Snow boots" autocomplete="off" maxlength="100">
     <div style="display:flex;gap:10px;">
       <div style="flex:1">
         <label>Category</label>
@@ -2061,7 +2223,7 @@ const DEFAULT_CATEGORIES = [
   { name: 'Dry Foods', icon: '🥫', requiresAssignment: false },
   { name: 'Clothes and Gear', icon: '👕', requiresAssignment: true },
   { name: 'Toiletries', icon: '🧴', requiresAssignment: false },
-  { name: 'Meal Ideas', icon: '🍽️', requiresAssignment: false },
+  { name: 'Meal Ideas', icon: '🍽️', requiresAssignment: false, isPackable: false },
   { name: 'Condo Stuff', icon: '🏠', requiresAssignment: false },
   { name: 'Kids Entertainment', icon: '🎮', requiresAssignment: false },
   { name: 'Dog List', icon: '🐕', requiresAssignment: false },
@@ -2160,6 +2322,7 @@ let viewUnpackedOnly = false;
 let viewShoppingOnly = false;
 let viewToDoOnly = false;
 let personFilterValue = '';
+let searchQuery = '';
 let currentMode = 'packing';
 let sortAlwaysBringTop = false;
 let collapseStates = {};
@@ -2273,19 +2436,27 @@ db.ref('trips').on('value', (snapshot) => {
 function getFilteredItems() {
   let list = Object.entries(items);
 
-  // All items view — include everything (including To Do)
-  if (viewAllItems) {
-    // no category exclusions
-  } else if (viewToDoOnly) {
-    return list.filter(([, it]) => it.category === 'To Do' && !it.packed);
-  } else if (currentFilter !== 'To Do') {
-    // Exclude To Do items from normal packing views
-    list = list.filter(([, it]) => it.category !== 'To Do');
-  }
+  // Search filter — applies across all categories when active
+  if (searchQuery) {
+    const query = searchQuery.toLowerCase();
+    list = list.filter(([, it]) => it.name.toLowerCase().includes(query));
+    // When searching, include all items (even To Do) to show complete results
+    // Skip category exclusions when search is active
+  } else {
+    // All items view — include everything (including To Do)
+    if (viewAllItems) {
+      // no category exclusions
+    } else if (viewToDoOnly) {
+      return list.filter(([, it]) => it.category === 'To Do' && !it.packed);
+    } else if (currentFilter !== 'To Do') {
+      // Exclude To Do items from normal packing views
+      list = list.filter(([, it]) => it.category !== 'To Do');
+    }
 
-  // Category filter
-  if (currentFilter !== 'all') {
-    list = list.filter(([, it]) => it.category === currentFilter);
+    // Category filter
+    if (currentFilter !== 'all') {
+      list = list.filter(([, it]) => it.category === currentFilter);
+    }
   }
 
   // Person filter
@@ -2345,6 +2516,55 @@ function toggleViewFilter(which, btn) {
 
 function applyFilters() {
   personFilterValue = document.getElementById('personFilter').value;
+  renderCurrentMode();
+}
+
+// ══════════════════════════════════════════
+// Search
+// ══════════════════════════════════════════
+function handleSearch(value) {
+  searchQuery = value.trim();
+  const clearBtn = document.getElementById('searchClear');
+  const resultsInfo = document.getElementById('searchResultsInfo');
+
+  // Show/hide clear button
+  if (clearBtn) clearBtn.classList.toggle('visible', searchQuery.length > 0);
+
+  // When searching, show flat grid view for better results display
+  if (searchQuery) {
+    categoryDrillDownMode = null;
+    viewAllItems = true;
+    document.getElementById('toggleAllItems')?.classList.add('active');
+  }
+
+  // Update results info
+  if (resultsInfo) {
+    if (searchQuery) {
+      const filtered = getFilteredItems();
+      const total = Object.keys(items).length;
+      resultsInfo.innerHTML = `<span class="highlight">${filtered.length}</span> of ${total} items match "<span class="highlight">${escapeHtml(searchQuery)}</span>"`;
+    } else {
+      resultsInfo.innerHTML = '';
+    }
+  }
+
+  renderCurrentMode();
+}
+
+function clearSearch() {
+  searchQuery = '';
+  const input = document.getElementById('searchInput');
+  const clearBtn = document.getElementById('searchClear');
+  const resultsInfo = document.getElementById('searchResultsInfo');
+
+  if (input) input.value = '';
+  if (clearBtn) clearBtn.classList.remove('visible');
+  if (resultsInfo) resultsInfo.innerHTML = '';
+
+  // Reset view state
+  viewAllItems = false;
+  document.getElementById('toggleAllItems')?.classList.remove('active');
+
   renderCurrentMode();
 }
 
@@ -2469,12 +2689,13 @@ function renderCategoryDashboard(allItems, filteredItems) {
     if (totalInCat === 0 && catItems.length === 0) continue;
     const packedInCat = allCatItems.filter(([, it]) => it.packed).length;
     const pct = totalInCat > 0 ? Math.round((packedInCat / totalInCat) * 100) : 0;
+    const isPackable = cat.isPackable !== false;
 
     html += `<div class="category-card" onclick="expandCategory('${cat.name.replace(/'/g,"\\'")}')">
       <div class="category-card-icon">${cat.icon}</div>
       <div class="category-card-name">${cat.name}</div>
-      <div class="category-card-count">${packedInCat} of ${totalInCat} packed</div>
-      <div class="category-card-progress"><div class="category-card-progress-fill" style="width:${pct}%"></div></div>
+      <div class="category-card-count">${isPackable ? `${packedInCat} of ${totalInCat} packed` : `${totalInCat} ideas`}</div>
+      ${isPackable ? `<div class="category-card-progress"><div class="category-card-progress-fill" style="width:${pct}%"></div></div>` : ''}
     </div>`;
   }
 
@@ -2491,12 +2712,13 @@ function renderExpandedCategory(categoryName, allItems, filteredItems) {
   const allCatItems = allItems.filter(([, it]) => it.category === cat.name);
   const totalInCat = allCatItems.length;
   const packedInCat = allCatItems.filter(([, it]) => it.packed).length;
+  const isPackable = cat.isPackable !== false;
 
   let html = `<div class="category-expanded">
     <div class="category-expanded-header">
       <button class="category-back-btn" onclick="collapseCategoryView()">←</button>
       <div class="category-expanded-title"><span>${cat.icon}</span><span>${cat.name}</span></div>
-      <div class="category-expanded-count">${packedInCat} of ${totalInCat} packed</div>
+      <div class="category-expanded-count">${isPackable ? `${packedInCat} of ${totalInCat} packed` : `${totalInCat} ideas`}</div>
     </div>`;
 
   if (cat.requiresAssignment) {
@@ -2587,17 +2809,43 @@ function exportShoppingList() {
 }
 
 function renderItemCard(id, item) {
+  const cat = CATEGORIES.find(c => c.name === item.category);
+  const isPackable = cat?.isPackable !== false; // Default to true if not specified
+
   const classes = ['item-card'];
-  if (item.packed) classes.push('packed');
+  if (!isPackable) classes.push('not-packable');
+  if (isPackable && item.packed) classes.push('packed');
   if (item.needToBuy && !item.packed) classes.push('need-to-buy');
-  if (item.alwaysBring && !item.packed) classes.push('always-highlight');
+  if (isPackable && item.alwaysBring && !item.packed) classes.push('always-highlight');
 
   let indicators = '';
-  if (item.alwaysBring) indicators += '<span>⭐</span>';
+  if (isPackable && item.alwaysBring) indicators += '<span>⭐</span>';
 
   const catOpts = CATEGORIES.map(c =>
     `<option value="${c.name}"${c.name === item.category ? ' selected' : ''}>${c.icon} ${c.name}</option>`
   ).join('');
+
+  // For non-packable items, show a simpler card without checkbox
+  if (!isPackable) {
+    return `<div class="${classes.join(' ')}" data-id="${id}" oncontextmenu="showCardActions('${id}', event)">
+      <div class="item-card-top">
+        <div class="item-card-bullet">•</div>
+        <div class="item-card-name">${escapeHtml(item.name)}</div>
+      </div>
+      <div class="item-card-bottom">
+        ${item.quantity > 1 ? `<span class="item-card-qty">&times;${item.quantity}</span>` : '<span></span>'}
+        <div class="item-card-indicators"></div>
+        <button class="item-card-edit" onclick="event.stopPropagation();openEditModal('${id}')" title="Edit">✏️</button>
+      </div>
+      <div class="item-card-actions">
+        <div class="item-card-actions-row">
+          <button onclick="event.stopPropagation();openEditModal('${id}')">✏️</button>
+          <button onclick="event.stopPropagation();confirmDeleteItem('${id}')">🗑️</button>
+        </div>
+        <select onclick="event.stopPropagation()" onchange="recategorizeItem('${id}', this.value)">${catOpts}</select>
+      </div>
+    </div>`;
+  }
 
   return `<div class="${classes.join(' ')}" data-id="${id}" onclick="togglePackedCard('${id}', event)" oncontextmenu="showCardActions('${id}', event)">
     <div class="item-card-top">
@@ -2758,11 +3006,18 @@ function renderItemRow(id, item) {
     </div>`;
 }
 
+// Helper to check if an item's category is packable
+function isItemPackable(item) {
+  const cat = CATEGORIES.find(c => c.name === item.category);
+  return cat?.isPackable !== false; // Default to true
+}
+
 function updateStats() {
-  const all = Object.values(items).filter(i => i.category !== 'To Do');
+  // Exclude To Do and non-packable categories from stats
+  const all = Object.values(items).filter(i => i.category !== 'To Do' && isItemPackable(i));
   const total = all.length;
   const packed = all.filter(i => i.packed).length;
-  const buy = all.filter(i => i.needToBuy).length;
+  const buy = Object.values(items).filter(i => i.needToBuy && isItemPackable(i)).length;
 
   if (currentMode === 'packing') {
     document.getElementById('headerStats').style.display = '';
@@ -2806,6 +3061,10 @@ function togglePacked(id, event) {
 function saveItem(addAnother = false) {
   const name = document.getElementById('itemName').value.trim();
   if (!name) { document.getElementById('itemName').focus(); return; }
+  if (name.length > 100) {
+    showToast('Item name too long (max 100 characters)');
+    return;
+  }
 
   const catVal = document.getElementById('itemCategory').value;
   if (catVal === '__new__') { openNewCatModal(); return; }
@@ -2899,7 +3158,7 @@ function openAddModal() {
   rebuildCategoryDropdowns();
   document.getElementById('modalTitle').textContent = 'Add Item';
   document.getElementById('itemName').value = '';
-  document.getElementById('itemCategory').value = 'Miscellaneous';
+  document.getElementById('itemCategory').value = (currentFilter && currentFilter !== 'all') ? currentFilter : 'Miscellaneous';
   document.getElementById('itemQty').value = '1';
   document.getElementById('itemBuy').checked = false;
   document.getElementById('itemAlways').checked = false;
@@ -3295,10 +3554,11 @@ function toggleImportSelect(i, checked) {
 function updateSelectedCount() {
   document.getElementById('selectedCount').textContent =
     parsedImportItems.filter(it => it.selected).length;
-  // Show/hide bulk person dropdown
+  // Show/hide bulk person dropdown based on category's requiresAssignment
   const bulkCat = document.getElementById('bulkCategory').value;
+  const needsAssign = CATEGORIES.find(c => c.name === bulkCat)?.requiresAssignment;
   document.getElementById('bulkPerson').style.display =
-    bulkCat === 'Clothes and Gear' ? 'inline-block' : 'none';
+    needsAssign ? 'inline-block' : 'none';
 }
 
 function selectAllImport() {
@@ -3333,8 +3593,9 @@ function applyBulk() {
 document.addEventListener('DOMContentLoaded', () => {
   const bc = document.getElementById('bulkCategory');
   if (bc) bc.addEventListener('change', () => {
+    const needsAssign = CATEGORIES.find(c => c.name === bc.value)?.requiresAssignment;
     document.getElementById('bulkPerson').style.display =
-      bc.value === 'Clothes and Gear' ? 'inline-block' : 'none';
+      needsAssign ? 'inline-block' : 'none';
   });
 });
 
@@ -3603,7 +3864,6 @@ function switchMode(mode) {
 function renderShoppingList() {
   const main = document.getElementById('mainContent');
   const buyItems = Object.entries(items).filter(([, it]) => it.needToBuy);
-  const unpurchased = buyItems.filter(([, it]) => !it.packed || it.needToBuy);
 
   // Update shopping count
   const countEl = document.getElementById('shopCount');
@@ -3718,12 +3978,86 @@ function openSettings() {
   checkUndoResetAvailable();
   // Sync toggle state
   document.getElementById('toggleAlwaysTop').classList.toggle('on', sortAlwaysBringTop);
+  // Load departure date into picker
+  const trip = trips[currentTripId];
+  const dateInput = document.getElementById('departureDateInput');
+  if (dateInput && trip?.departureDate) {
+    dateInput.value = trip.departureDate;
+  } else if (dateInput) {
+    dateInput.value = '';
+  }
   document.getElementById('settingsOverlay').classList.add('open');
 }
 
 function closeSettings(e) {
   if (e && e.target !== e.currentTarget) return;
   document.getElementById('settingsOverlay').classList.remove('open');
+}
+
+// ══════════════════════════════════════════
+// Departure Date & Countdown
+// ══════════════════════════════════════════
+function saveDepartureDate(dateStr) {
+  if (!currentTripId) return;
+  db.ref('trips/' + currentTripId).update({ departureDate: dateStr || null });
+  // Update local trips object
+  if (trips[currentTripId]) {
+    trips[currentTripId].departureDate = dateStr || null;
+  }
+  updateCountdown();
+  showToast(dateStr ? 'Departure date set' : 'Departure date cleared');
+}
+
+function openDatePicker() {
+  openSettings();
+  // Focus the date input after settings opens
+  setTimeout(() => {
+    document.getElementById('departureDateInput')?.focus();
+  }, 300);
+}
+
+function updateCountdown() {
+  const banner = document.getElementById('countdownBanner');
+  const daysEl = document.getElementById('countdownDays');
+  const labelEl = document.getElementById('countdownLabel');
+  if (!banner || !daysEl || !labelEl) return;
+
+  const trip = trips[currentTripId];
+  if (!trip?.departureDate) {
+    banner.classList.remove('visible', 'today', 'past');
+    return;
+  }
+
+  // Parse the date (YYYY-MM-DD format)
+  const departure = new Date(trip.departureDate + 'T00:00:00');
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const diffTime = departure.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  banner.classList.remove('today', 'past');
+  banner.classList.add('visible');
+
+  if (diffDays === 0) {
+    daysEl.textContent = '🎉';
+    labelEl.textContent = "It's trip day!";
+    banner.classList.add('today');
+  } else if (diffDays === 1) {
+    daysEl.textContent = '1';
+    labelEl.textContent = 'day until trip';
+  } else if (diffDays > 1) {
+    daysEl.textContent = diffDays;
+    labelEl.textContent = 'days until trip';
+  } else if (diffDays === -1) {
+    daysEl.textContent = '1';
+    labelEl.textContent = 'day since trip started';
+    banner.classList.add('past');
+  } else {
+    daysEl.textContent = Math.abs(diffDays);
+    labelEl.textContent = 'days since trip started';
+    banner.classList.add('past');
+  }
 }
 
 function toggleAlwaysBringSort() {
@@ -3737,10 +4071,11 @@ function toggleAlwaysBringSort() {
 // Progress Bar
 // ══════════════════════════════════════════
 function updateProgressBar() {
-  const all = Object.values(items).filter(i => i.category !== 'To Do');
+  // Exclude To Do and non-packable categories from progress
+  const all = Object.values(items).filter(i => i.category !== 'To Do' && isItemPackable(i));
   const total = all.length;
   const packed = all.filter(i => i.packed).length;
-  const buy = all.filter(i => i.needToBuy).length;
+  const buy = Object.values(items).filter(i => i.needToBuy && isItemPackable(i)).length;
   const pct = total > 0 ? Math.round((packed / total) * 100) : 0;
 
   document.getElementById('progressPacked').textContent = packed;
@@ -3941,6 +4276,9 @@ function showTripView(tripId) {
   document.getElementById('headerTitleText').textContent = trip.name || 'Trip';
   document.getElementById('headerIcon').textContent = trip.icon || '🧳';
 
+  // Update countdown banner
+  updateCountdown();
+
   // Reset filters/mode
   currentFilter = 'all';
   viewUnpackedOnly = false;
@@ -3948,12 +4286,18 @@ function showTripView(tripId) {
   viewToDoOnly = false;
   viewAllItems = false;
   personFilterValue = '';
+  searchQuery = '';
   currentMode = 'packing';
   document.getElementById('toggleUnpacked')?.classList.remove('active');
   document.getElementById('toggleToDo')?.classList.remove('active');
   document.getElementById('toggleAllItems')?.classList.remove('active');
   document.getElementById('toggleShopping')?.classList.remove('active');
   document.getElementById('personFilter').value = '';
+  const searchInput = document.getElementById('searchInput');
+  if (searchInput) searchInput.value = '';
+  document.getElementById('searchClear')?.classList.remove('visible');
+  const searchResultsInfo = document.getElementById('searchResultsInfo');
+  if (searchResultsInfo) searchResultsInfo.innerHTML = '';
   switchMode('packing');
 
   attachTripListeners(tripId);

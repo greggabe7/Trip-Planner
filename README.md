@@ -5,22 +5,31 @@ A self-contained PWA for managing packing lists across multiple family trips. Bu
 ## Features
 
 - **Multi-trip support** — Create, clone, rename, and delete trips from a home screen
-- **Packing list** — Add items with categories, quantities, family member assignment
-- **Shopping list** — Toggle items as "need to buy", separate shopping view with share
-- **Bulk import** — Paste lists from Google Docs with duplicate detection
+- **Category dashboard** — Grid of category tiles with drill-down into compact item cards for maximum visibility
+- **10 built-in categories** — Refrigerated Foods, Dry Foods, Clothes and Gear, Toiletries, Meal Ideas, Condo Stuff, Kids Entertainment, Dog List, Miscellaneous, and To Do
 - **Custom categories** — Add your own categories with emoji icons
+- **Shopping list** — Cart icon on every item card to add/remove from shopping list; dedicated shopping list view with export to markdown
+- **To Do list** — Separate task category for pre-trip chores, accessible from the category bar
+- **Smart import** — Paste plain text, markdown with `#` headers, Google Docs URLs, or upload `.md` files with auto-categorization
+- **Auto-categorization** — 80+ keyword mappings and regex patterns automatically sort items into categories on import
+- **Recategorize items** — Right-click or long-press any item card to change its category
+- **Export shopping list** — Download shopping list as a markdown file grouped by category for printing or use in Notes
+- **Unpacked filter** — Layered filter that hides packed items from any view without switching views
+- **Full List view** — See all items across all categories in a single grid
+- **Per-person assignment** — Assign clothes and gear to family members; filter by person
+- **Progress tracking** — Per-category and global packing progress bars
+- **Reset & undo** — Reset all packed states for next trip with 24-hour undo window
+- **Family site link** — 🏠 button in the header links back to the family website
 - **Offline-first** — Works without internet, syncs automatically when reconnected
 - **Installable PWA** — Add to home screen on iOS and Android
 - **Swipe gestures** — Swipe left to delete, swipe right to toggle shopping list
-- **Progress tracking** — Per-category and global packing progress bars
-- **Reset & undo** — Reset all packed states for next trip with 24-hour undo window
 - **Deep linking** — Direct URLs to specific trips (`/#/trip/{id}`)
 - **Data migration** — Automatically migrates from single-trip to multi-trip format
 
 ## Project Structure
 
 ```
-index.html      — Entire app (HTML + CSS + JS, ~3700 lines)
+index.html      — Entire app (HTML + CSS + JS, ~4700 lines)
 manifest.json   — PWA manifest with inline SVG icons
 sw.js           — Service worker for offline caching (v3)
 README.md       — This file
@@ -56,7 +65,7 @@ README.md       — This file
 2. Go to [Netlify](https://app.netlify.com) > **Add new site > Import from Git**
 3. Connect GitHub and select this repo
 4. Build command: *(leave empty)*
-5. Publish directory: `/`
+5. Publish directory: `.`
 6. Click **Deploy site**
 
 Netlify auto-deploys on every push to `main`.
@@ -71,9 +80,9 @@ Netlify auto-deploys on every push to `main`.
 At the top of the `<script>` section in `index.html`:
 
 ```js
-// Set to your family website URL to show a "Back to Family Site" link in Settings.
+// Set to your family website URL to show a "Back to Family Site" link in header + settings.
 // Leave empty string to hide the link.
-const FAMILY_SITE_URL = "";
+const FAMILY_SITE_URL = "https://gabrielfamilywebsite.netlify.app";
 ```
 
 ## URL Patterns
@@ -135,7 +144,13 @@ trips/
 | Refrigerated Foods | 🧊 | No |
 | Dry Foods | 🥫 | No |
 | Clothes and Gear | 👕 | Yes |
+| Toiletries | 🧴 | No |
+| Meal Ideas | 🍽️ | No |
+| Condo Stuff | 🏠 | No |
+| Kids Entertainment | 🎮 | No |
+| Dog List | 🐕 | No |
 | Miscellaneous | 📦 | No |
+| To Do | ✅ | No |
 
 ## Tech Stack
 
