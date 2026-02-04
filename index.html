@@ -535,6 +535,40 @@
   }
   .item-checkbox.pop { animation: checkPop .25s ease; }
 
+  /* ── Drag and Drop ── */
+  .drag-handle {
+    cursor: grab;
+    padding: 0 4px;
+    color: var(--gray-light);
+    user-select: none;
+    font-size: 14px;
+    letter-spacing: -2px;
+    opacity: 0.4;
+    transition: opacity .15s;
+    flex-shrink: 0;
+    touch-action: none;
+  }
+  .drag-handle:hover { opacity: 1; }
+  .drag-handle:active { cursor: grabbing; }
+  .item-card .drag-handle {
+    font-size: 11px;
+    padding: 0 2px;
+    margin-top: 2px;
+  }
+  .item-row-wrapper.dragging .item-row,
+  .item-card.dragging {
+    opacity: 0.5;
+    background: var(--snow-gray);
+  }
+  .item-row-wrapper.drag-over {
+    border-top: 2px solid var(--blue-mid);
+    margin-top: -2px;
+  }
+  .item-card.drag-over {
+    outline: 2px solid var(--blue-mid);
+    outline-offset: -2px;
+  }
+
   /* ── Item slide-in animation ── */
   @keyframes itemSlideIn {
     from { opacity: 0; transform: translateX(-12px); }
@@ -1790,6 +1824,119 @@
     padding: 4px 10px; font-size: 12px; cursor: pointer; color: var(--gray-light);
   }
   .view-mode-toggle:active { background: var(--snow-gray); }
+
+  /* ══════════════════════════════════════════
+     Utility Classes
+     ══════════════════════════════════════════ */
+
+  /* Flexbox Utilities */
+  .u-flex { display: flex; }
+  .u-flex-center { display: flex; align-items: center; }
+  .u-flex-between { display: flex; justify-content: space-between; align-items: center; }
+  .u-flex-1 { flex: 1; }
+  .u-flex-gap-sm { gap: 6px; }
+  .u-flex-gap { gap: 8px; }
+  .u-flex-gap-md { gap: 10px; }
+  .u-ml-auto { margin-left: auto; }
+  .u-hidden { display: none; }
+
+  /* Button Utilities */
+  .u-btn {
+    padding: 8px 18px;
+    border-radius: 8px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .u-btn-sm {
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: none;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .u-btn-primary { background: var(--blue-mid); color: #fff; }
+  .u-btn-danger { background: #c62828; color: #fff; }
+  .u-btn-cancel { background: var(--snow-gray); color: #333; }
+  .file-upload-btn {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 8px;
+    background: var(--blue-mid);
+    color: #fff;
+    cursor: pointer;
+    font-size: 14px;
+  }
+
+  /* Text Utilities */
+  .u-text-muted { color: var(--gray-light); }
+  .u-text-sm { font-size: 13px; }
+  .u-text-xs { font-size: 11px; }
+  .u-text-center { text-align: center; }
+  .u-text-success { color: #81c784; }
+  .u-text-warning { color: #ffb74d; }
+  .u-label { font-size: 13px; color: var(--gray-light); margin-bottom: 8px; }
+  .home-link { font-size: 20px; text-decoration: none; }
+  .u-section-title { font-size: 15px; font-weight: 600; color: var(--blue-dark); padding: 12px 16px; }
+  .clone-label { margin: 0; font-size: 14px; color: #333; }
+
+  /* Form Utilities */
+  .u-input {
+    padding: 8px 12px;
+    border: 1px solid var(--snow-gray);
+    border-radius: 8px;
+    font-size: 14px;
+    width: 100%;
+  }
+  .u-checkbox { width: 18px; height: 18px; }
+  .icon-input { width: 80px; }
+
+  /* Spacing Utilities */
+  .u-mt-sm { margin-top: 4px; }
+  .u-mt { margin-top: 8px; }
+  .u-mb-sm { margin-bottom: 4px; }
+  .u-mb { margin-bottom: 8px; }
+
+  /* Color Swatch (for pickers) */
+  .u-color-swatch {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+  }
+  .u-color-swatch.selected { border-color: #333; }
+
+  /* Loading Overlay */
+  .loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+  }
+  .loading-overlay.visible {
+    opacity: 1;
+    visibility: visible;
+  }
+  .loading-overlay-content {
+    background: #fff;
+    padding: 24px 32px;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  }
+  .loading-overlay-text {
+    margin-top: 12px;
+    font-size: 14px;
+    color: var(--gray-text);
+  }
 </style>
 </head>
 <body>
@@ -1804,13 +1951,13 @@
 
 <!-- ── Header ── -->
 <header role="banner">
-  <div style="display:flex;justify-content:space-between;align-items:center;">
-    <div style="display:flex;align-items:center;">
+  <div class="u-flex-between">
+    <div class="u-flex-center">
       <button class="header-back-btn" id="headerBackBtn" onclick="navigate('/')" aria-label="Back to trips">←</button>
       <h1><span class="mountain" aria-hidden="true" id="headerIcon">🧳</span> <span id="headerTitleText">Gabriel Family Trips</span></h1>
     </div>
-    <div style="display:flex;align-items:center;gap:8px;">
-      <a href="https://gabrielfamilywebsite.netlify.app" style="font-size:20px;text-decoration:none;" title="Back to Family Site">🏠</a>
+    <div class="u-flex-center u-flex-gap">
+      <a href="https://gabrielfamilywebsite.netlify.app" class="home-link" title="Back to Family Site">🏠</a>
       <button class="settings-btn" onclick="openSettings()" aria-label="Open settings menu">⚙️</button>
     </div>
   </div>
@@ -1819,9 +1966,9 @@
     <span aria-hidden="true">·</span>
     <span id="stat-packed">0 packed</span>
     <span aria-hidden="true">·</span>
-    <span id="stat-buy" style="color:#ffb74d">0 to buy</span>
+    <span id="stat-buy" class="u-text-warning">0 to buy</span>
     <span aria-hidden="true" id="stat-todo-sep">·</span>
-    <span id="stat-todo" style="color:#81c784">0/0 tasks</span>
+    <span id="stat-todo" class="u-text-success">0/0 tasks</span>
   </div>
   <div class="countdown-banner" id="countdownBanner">
     <span>🗓️</span>
@@ -1898,7 +2045,7 @@
     <div class="settings-item settings-date-item">
       <div class="si-title">🗓️ Departure Date</div>
       <div class="si-desc">Set when the trip starts for countdown</div>
-      <input type="date" id="departureDateInput" onchange="saveDepartureDate(this.value)" style="margin-top:8px;padding:8px 12px;border:1px solid var(--snow-gray);border-radius:8px;font-size:14px;width:100%;">
+      <input type="date" id="departureDateInput" onchange="saveDepartureDate(this.value)" class="u-input u-mt">
     </div>
     <div class="settings-item" onclick="resetForNextTrip()">
       <div class="si-title">🔄 Reset for Next Trip</div>
@@ -1927,19 +2074,19 @@
 <!-- ── Import Section ── -->
 <div class="import-section" id="importSection">
   <h3>Import Items</h3>
-  <p style="font-size:13px;color:var(--gray-light);margin-bottom:8px;">
+  <p class="u-text-sm u-text-muted u-mb">
     Paste a list, markdown with # headers, or a Google Docs URL.<br>
     Supports: "2x Jackets", "3 - Beer", "Socks (x4)", or upload a .md file.
   </p>
-  <div style="margin-bottom:8px;">
-    <label style="display:inline-block;padding:6px 14px;border-radius:8px;background:var(--primary);color:#fff;cursor:pointer;font-size:14px;">
+  <div class="u-mb">
+    <label class="file-upload-btn">
       📁 Upload File
-      <input type="file" accept=".md,.txt,.markdown" style="display:none;" onchange="handleFileImport(this)">
+      <input type="file" accept=".md,.txt,.markdown" class="u-hidden" onchange="handleFileImport(this)">
     </label>
   </div>
   <textarea id="importText" placeholder="Paste items here, one per line...&#10;&#10;2x Jackets&#10;3 - Beer&#10;Ski goggles&#10;&#10;Or paste markdown with # Category headers&#10;Or paste a Google Docs URL"></textarea>
   <div class="import-controls">
-    <button class="btn-primary" style="padding:8px 18px;border-radius:8px;" onclick="detectAndFetchSource()">Preview Items</button>
+    <button class="u-btn u-btn-primary" onclick="detectAndFetchSource()">Preview Items</button>
   </div>
 </div>
 
@@ -1981,12 +2128,12 @@
     </div>
     <div class="import-modal-body" id="importPreviewList"></div>
     <div class="import-modal-footer">
-      <span id="importDupWarning" style="font-size:12px;color:var(--orange-buy);display:none;">
+      <span id="importDupWarning" class="u-text-xs u-text-warning" style="display:none;">
         Duplicates will be skipped
       </span>
-      <div style="display:flex;gap:10px;margin-left:auto;">
-        <button class="btn-secondary" style="padding:10px 20px;border-radius:8px;border:none;font-size:14px;font-weight:600;cursor:pointer;" onclick="closeImportPreview()">Cancel</button>
-        <button class="btn-primary" style="padding:10px 20px;border-radius:8px;border:none;font-size:14px;font-weight:600;cursor:pointer;" onclick="confirmImport()">Import All</button>
+      <div class="u-flex u-flex-gap-md u-ml-auto">
+        <button class="u-btn u-btn-cancel" onclick="closeImportPreview()">Cancel</button>
+        <button class="u-btn u-btn-primary" onclick="confirmImport()">Import All</button>
       </div>
     </div>
   </div>
@@ -2081,13 +2228,13 @@
       <div class="color-pick" data-color="#00838f" style="background:#00838f" onclick="pickColor(this)"></div>
     </div>
     <div class="clone-section" id="cloneSection">
-      <label style="margin:0;display:flex;align-items:center;gap:6px;font-size:14px;color:#333;">
-        <input type="checkbox" id="cloneCheckbox" onchange="toggleCloneSelect()" style="width:18px;height:18px;">
+      <label class="u-flex-center u-flex-gap-sm clone-label">
+        <input type="checkbox" id="cloneCheckbox" onchange="toggleCloneSelect()" class="u-checkbox">
         Clone items from existing trip
       </label>
-      <select id="cloneSourceTrip" style="display:none;"></select>
+      <select id="cloneSourceTrip" class="u-hidden"></select>
     </div>
-    <div class="modal-buttons" style="margin-top:16px;">
+    <div class="modal-buttons u-mt">
       <button class="btn-secondary" onclick="closeCreateTripModal()">Cancel</button>
       <button class="btn-primary" onclick="saveTrip()">Create Trip</button>
     </div>
@@ -2120,18 +2267,18 @@
     <h3 id="modalTitle">Add Item</h3>
     <label>Item Name</label>
     <input type="text" id="itemName" placeholder="e.g. Snow boots" autocomplete="off" maxlength="100">
-    <div style="display:flex;gap:10px;">
-      <div style="flex:1">
+    <div class="u-flex u-flex-gap-md">
+      <div class="u-flex-1">
         <label>Category</label>
         <select id="itemCategory" onchange="onCategoryChange()">
         </select>
       </div>
-      <div style="flex:1">
+      <div class="u-flex-1">
         <label>Quantity</label>
         <input type="number" id="itemQty" value="1" min="1">
       </div>
     </div>
-    <div id="assignmentField" style="display:none;">
+    <div id="assignmentField" class="u-hidden">
       <label>Assign To</label>
       <select id="itemAssign">
         <option value="">Unassigned</option>
@@ -2161,12 +2308,12 @@
     <label>Category Name</label>
     <input type="text" id="newCatName" placeholder="e.g. Cooking Supplies" autocomplete="off">
     <label>Icon (emoji, optional)</label>
-    <input type="text" id="newCatIcon" placeholder="e.g. 🍳" maxlength="4" style="width:80px;">
+    <input type="text" id="newCatIcon" placeholder="e.g. 🍳" maxlength="4" class="icon-input">
     <div class="toggle-row">
       <input type="checkbox" id="newCatAssign">
       <span>Requires family member assignment</span>
     </div>
-    <div class="modal-buttons" style="margin-top:16px;">
+    <div class="modal-buttons u-mt">
       <button class="btn-secondary" onclick="closeNewCatModal()">Cancel</button>
       <button class="btn-primary" onclick="saveNewCategory()">Add Category</button>
     </div>
@@ -2231,6 +2378,82 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
+
+// ══════════════════════════════════════════
+// Firebase Error Handling
+// ══════════════════════════════════════════
+
+/**
+ * Wraps a Firebase operation with error handling and optional user feedback.
+ * @param {Promise} operation - The Firebase operation (e.g., ref.update(), ref.push())
+ * @param {Object} options - Optional configuration
+ * @param {string} options.successMsg - Toast message on success (omit to skip)
+ * @param {string} options.errorMsg - Custom error message (default: "Something went wrong")
+ * @param {boolean} options.silent - If true, don't show error toast (for background ops)
+ * @returns {Promise} - Resolves with the operation result, rejects with error
+ */
+function fbOperation(operation, options = {}) {
+  const { successMsg, errorMsg = 'Something went wrong. Please try again.', silent = false } = options;
+  return Promise.resolve(operation)
+    .then(result => {
+      if (successMsg) showToast(successMsg);
+      return result;
+    })
+    .catch(error => {
+      console.error('Firebase operation failed:', error);
+      if (!silent) showToast(errorMsg);
+      throw error;
+    });
+}
+
+// ══════════════════════════════════════════
+// Loading State Helpers
+// ══════════════════════════════════════════
+
+/**
+ * Shows/hides a loading overlay for long operations
+ * @param {boolean} show - Whether to show or hide loading
+ * @param {string} message - Optional message to display
+ */
+function setLoading(show, message = 'Please wait...') {
+  let overlay = document.getElementById('loadingOverlay');
+  if (show) {
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'loadingOverlay';
+      overlay.className = 'loading-overlay';
+      overlay.innerHTML = `
+        <div class="loading-overlay-content">
+          <div class="loading-spinner"></div>
+          <div class="loading-overlay-text">${message}</div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+    } else {
+      overlay.querySelector('.loading-overlay-text').textContent = message;
+    }
+    overlay.classList.add('visible');
+  } else if (overlay) {
+    overlay.classList.remove('visible');
+  }
+}
+
+/**
+ * Disables/enables a button with loading state
+ * @param {HTMLElement} btn - The button element
+ * @param {boolean} loading - Whether to show loading state
+ * @param {string} originalText - Original button text to restore
+ */
+function setBtnLoading(btn, loading, originalText) {
+  if (loading) {
+    btn.disabled = true;
+    btn.dataset.originalText = btn.textContent;
+    btn.textContent = '...';
+  } else {
+    btn.disabled = false;
+    btn.textContent = originalText || btn.dataset.originalText || btn.textContent;
+  }
+}
 
 // ══════════════════════════════════════════
 // App State
@@ -2668,7 +2891,7 @@ function renderItems() {
           person === null ? !it.assignedTo : it.assignedTo === person
         );
         if (personItems.length === 0) continue;
-        if (sortAlwaysBringTop) personItems = sortAlwaysFirst(personItems);
+        personItems = sortAlwaysBringTop ? sortAlwaysFirst(personItems) : sortByOrder(personItems);
         const label = person || 'Unassigned';
         const allPersonItems = allCatItems.filter(([, it]) =>
           person === null ? !it.assignedTo : it.assignedTo === person
@@ -2681,7 +2904,7 @@ function renderItems() {
         html += `</div>`;
       }
     } else {
-      const sorted = sortAlwaysBringTop ? sortAlwaysFirst(catItems) : catItems;
+      const sorted = sortAlwaysBringTop ? sortAlwaysFirst(catItems) : sortByOrder(catItems);
       html += sorted.map(([id, it]) => renderItemRow(id, it)).join('');
     }
 
@@ -2768,7 +2991,7 @@ function renderExpandedCategory(categoryName, allItems, filteredItems) {
         person === null ? !it.assignedTo : it.assignedTo === person
       );
       if (personItems.length === 0) continue;
-      if (sortAlwaysBringTop) personItems = sortAlwaysFirst(personItems);
+      personItems = sortAlwaysBringTop ? sortAlwaysFirst(personItems) : sortByOrder(personItems);
       const label = person || 'Unassigned';
       const allPersonItems = allCatItems.filter(([, it]) =>
         person === null ? !it.assignedTo : it.assignedTo === person
@@ -2781,7 +3004,7 @@ function renderExpandedCategory(categoryName, allItems, filteredItems) {
       </div>`;
     }
   } else {
-    const sorted = sortAlwaysBringTop ? sortAlwaysFirst(catItems) : catItems;
+    const sorted = sortAlwaysBringTop ? sortAlwaysFirst(catItems) : sortByOrder(catItems);
     html += `<div class="items-grid">${sorted.map(([id, it]) => renderItemCard(id, it)).join('')}</div>`;
   }
 
@@ -2791,14 +3014,14 @@ function renderExpandedCategory(categoryName, allItems, filteredItems) {
 
 function renderFlatGrid(filteredItems, title) {
   const main = document.getElementById('mainContent');
-  const sorted = sortAlwaysBringTop ? sortAlwaysFirst(filteredItems) : filteredItems;
-  main.innerHTML = `<div style="padding:12px 16px;font-size:15px;font-weight:600;color:var(--blue-dark);">${title} <span style="font-weight:400;color:var(--gray-light);font-size:13px;">(${sorted.length} items)</span></div>
+  const sorted = sortAlwaysBringTop ? sortAlwaysFirst(filteredItems) : sortByOrder(filteredItems);
+  main.innerHTML = `<div class="u-section-title">${title} <span class="u-text-muted u-text-sm">(${sorted.length} items)</span></div>
     <div class="items-grid">${sorted.map(([id, it]) => renderItemCard(id, it)).join('')}</div>`;
 }
 
 function renderShoppingGrid(filteredItems) {
   const main = document.getElementById('mainContent');
-  const sorted = sortAlwaysBringTop ? sortAlwaysFirst(filteredItems) : filteredItems;
+  const sorted = sortAlwaysBringTop ? sortAlwaysFirst(filteredItems) : sortByOrder(filteredItems);
   const total = sorted.length;
   const purchased = sorted.filter(([, it]) => it.packed).length;
 
@@ -2807,9 +3030,9 @@ function renderShoppingGrid(filteredItems) {
       <button class="category-back-btn" onclick="switchMode('packing')">←</button>
       <div class="category-expanded-title"><span>🛒</span><span>Shopping List</span></div>
       <div class="category-expanded-count">${total} items</div>
-      <div style="margin-left:auto;text-align:center;">
-        <button onclick="exportShoppingList()" style="padding:6px 12px;border-radius:8px;border:none;background:var(--primary);color:#fff;font-size:13px;cursor:pointer;">📤 Export</button>
-        <div style="font-size:10px;color:var(--gray-light);margin-top:2px;">Export List</div>
+      <div class="u-ml-auto u-text-center">
+        <button class="u-btn-sm u-btn-primary" onclick="exportShoppingList()">📤 Export</button>
+        <div class="u-text-xs u-text-muted u-mt-sm">Export List</div>
       </div>
     </div>
     <div class="items-grid">${sorted.map(([id, it]) => renderItemCard(id, it)).join('')}</div>
@@ -2867,8 +3090,9 @@ function renderItemCard(id, item) {
 
   // For non-packable items, show a simpler card without checkbox
   if (!isPackable) {
-    return `<div class="${classes.join(' ')}" data-id="${id}" oncontextmenu="showCardActions('${id}', event)">
+    return `<div class="${classes.join(' ')}" data-id="${id}" oncontextmenu="showCardActions('${id}', event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, '${id}')">
       <div class="item-card-top">
+        <div class="drag-handle" draggable="true" ondragstart="handleDragStart(event, '${id}')" ondragend="handleDragEnd(event)" title="Drag to reorder">⋮⋮</div>
         <div class="item-card-bullet">•</div>
         <div class="item-card-name">${escapeHtml(item.name)}</div>
       </div>
@@ -2887,8 +3111,9 @@ function renderItemCard(id, item) {
     </div>`;
   }
 
-  return `<div class="${classes.join(' ')}" data-id="${id}" onclick="togglePackedCard('${id}', event)" oncontextmenu="showCardActions('${id}', event)">
+  return `<div class="${classes.join(' ')}" data-id="${id}" onclick="togglePackedCard('${id}', event)" oncontextmenu="showCardActions('${id}', event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, '${id}')">
     <div class="item-card-top">
+      <div class="drag-handle" draggable="true" ondragstart="handleDragStart(event, '${id}')" ondragend="handleDragEnd(event)" title="Drag to reorder">⋮⋮</div>
       <div class="item-card-checkbox"></div>
       <div class="item-card-name">${escapeHtml(item.name)}</div>
     </div>
@@ -2967,8 +3192,9 @@ function recategorizeItem(id, newCategory) {
   if (!item || item.category === newCategory) return;
   const refs = getCurrentTripRefs();
   if (refs) {
-    refs.items.child(id).update({ category: newCategory });
-    showToast(`Moved to ${newCategory}`);
+    fbOperation(refs.items.child(id).update({ category: newCategory }), {
+      successMsg: `Moved to ${newCategory}`
+    });
   }
 }
 
@@ -3003,8 +3229,100 @@ function sortAlwaysFirst(itemList) {
   return [...itemList].sort((a, b) => {
     const aAlways = a[1].alwaysBring ? 0 : 1;
     const bAlways = b[1].alwaysBring ? 0 : 1;
-    return aAlways - bAlways;
+    if (aAlways !== bAlways) return aAlways - bAlways;
+    // Secondary sort by order field
+    const aOrder = a[1].order || a[1].createdAt || 0;
+    const bOrder = b[1].order || b[1].createdAt || 0;
+    return aOrder - bOrder;
   });
+}
+
+// Sort items by order field (for non-starred sort mode)
+function sortByOrder(itemList) {
+  return [...itemList].sort((a, b) => {
+    const aOrder = a[1].order || a[1].createdAt || 0;
+    const bOrder = b[1].order || b[1].createdAt || 0;
+    return aOrder - bOrder;
+  });
+}
+
+// ══════════════════════════════════════════
+// Drag and Drop Reordering
+// ══════════════════════════════════════════
+let draggedId = null;
+let draggedCategory = null;
+
+function handleDragStart(e, id) {
+  draggedId = id;
+  draggedCategory = items[id]?.category;
+  const wrapper = e.target.closest('.item-row-wrapper, .item-card');
+  if (wrapper) wrapper.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', id);
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+  const target = e.target.closest('.item-row-wrapper, .item-card');
+  if (!target) return;
+  // Only allow drop within same category
+  const targetId = target.dataset.id;
+  if (targetId && items[targetId]?.category === draggedCategory) {
+    target.classList.add('drag-over');
+    e.dataTransfer.dropEffect = 'move';
+  }
+}
+
+function handleDragLeave(e) {
+  const target = e.target.closest('.item-row-wrapper, .item-card');
+  if (target) target.classList.remove('drag-over');
+}
+
+function handleDrop(e, targetId) {
+  e.preventDefault();
+  if (!draggedId || draggedId === targetId) return;
+  // Only allow reorder within same category
+  if (items[draggedId]?.category !== items[targetId]?.category) return;
+
+  const refs = getCurrentTripRefs();
+  if (!refs) return;
+
+  // Get sorted items in this category to calculate new order
+  const category = items[targetId].category;
+  const catItems = Object.entries(items)
+    .filter(([, it]) => it.category === category)
+    .sort((a, b) => (a[1].order || a[1].createdAt || 0) - (b[1].order || b[1].createdAt || 0));
+
+  const targetIndex = catItems.findIndex(([id]) => id === targetId);
+  const draggedIndex = catItems.findIndex(([id]) => id === draggedId);
+
+  if (targetIndex === -1) return;
+
+  // Calculate new order value
+  let newOrder;
+  if (draggedIndex < targetIndex) {
+    // Moving down - place after target
+    const nextItem = catItems[targetIndex + 1];
+    const targetOrder = catItems[targetIndex][1].order || catItems[targetIndex][1].createdAt || 0;
+    const nextOrder = nextItem ? (nextItem[1].order || nextItem[1].createdAt || targetOrder + 1000) : targetOrder + 1000;
+    newOrder = Math.floor((targetOrder + nextOrder) / 2);
+  } else {
+    // Moving up - place before target
+    const prevItem = catItems[targetIndex - 1];
+    const targetOrder = catItems[targetIndex][1].order || catItems[targetIndex][1].createdAt || 0;
+    const prevOrder = prevItem ? (prevItem[1].order || prevItem[1].createdAt || targetOrder - 1000) : targetOrder - 1000;
+    newOrder = Math.floor((prevOrder + targetOrder) / 2);
+  }
+
+  fbOperation(refs.items.child(draggedId).update({ order: newOrder }), { silent: true });
+  document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+}
+
+function handleDragEnd(e) {
+  draggedId = null;
+  draggedCategory = null;
+  document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
+  document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
 }
 
 function toggleCategoryCollapse(groupEl) {
@@ -3029,10 +3347,11 @@ function renderItemRow(id, item) {
 
   const packedLabel = item.packed ? 'packed' : 'not packed';
   return `
-    <div class="item-row-wrapper" data-id="${id}">
+    <div class="item-row-wrapper" data-id="${id}" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, '${id}')">
       <div class="swipe-buy-bg" aria-hidden="true">🛒</div>
       <div class="swipe-delete-bg" aria-hidden="true">🗑️</div>
       <div class="${classes.join(' ')}" onclick="togglePacked('${id}', event)" role="checkbox" aria-checked="${item.packed}" aria-label="${escapeHtml(item.name)}, ${packedLabel}" tabindex="0">
+        <div class="drag-handle" draggable="true" ondragstart="handleDragStart(event, '${id}')" ondragend="handleDragEnd(event)" title="Drag to reorder">⋮⋮</div>
         <div class="item-checkbox" id="chk-${id}" aria-hidden="true"></div>
         <div class="item-name">${escapeHtml(item.name)}</div>
         ${item.quantity > 1 ? `<span class="item-qty" aria-label="quantity ${item.quantity}">×${item.quantity}</span>` : ''}
@@ -3110,10 +3429,11 @@ function togglePacked(id, event) {
   const refs = getCurrentTripRefs();
   if (!refs) return;
   if (viewShoppingOnly) {
-    refs.items.child(id).update({ needToBuy: false });
-    showToast(`${item.name} removed from shopping list`);
+    fbOperation(refs.items.child(id).update({ needToBuy: false }), {
+      successMsg: `${item.name} removed from shopping list`
+    });
   } else {
-    refs.items.child(id).update({ packed: !item.packed });
+    fbOperation(refs.items.child(id).update({ packed: !item.packed }));
   }
 }
 
@@ -3136,7 +3456,8 @@ function saveItem(addAnother = false) {
     alwaysBring: document.getElementById('itemAlways').checked,
     assignedTo: document.getElementById('itemAssign').value || null,
     packed: false,
-    createdAt: Date.now()
+    createdAt: Date.now(),
+    order: Date.now()
   };
 
   const refs = getCurrentTripRefs();
@@ -3144,20 +3465,23 @@ function saveItem(addAnother = false) {
   if (editingId) {
     data.packed = items[editingId]?.packed || false;
     data.createdAt = items[editingId]?.createdAt || Date.now();
-    refs.items.child(editingId).update(data);
-    showToast('Item updated');
-    closeModal();
+    data.order = items[editingId]?.order || items[editingId]?.createdAt || Date.now();
+    fbOperation(refs.items.child(editingId).update(data), { successMsg: 'Item updated' })
+      .then(() => closeModal())
+      .catch(() => {}); // Error already shown by fbOperation
   } else {
-    refs.items.push(data);
-    showToast('Item added');
-    if (addAnother) {
-      // Clear name and qty for next entry, keep category and toggles
-      document.getElementById('itemName').value = '';
-      document.getElementById('itemQty').value = '1';
-      setTimeout(() => document.getElementById('itemName').focus(), 100);
-    } else {
-      closeModal();
-    }
+    fbOperation(refs.items.push(data), { successMsg: 'Item added' })
+      .then(() => {
+        if (addAnother) {
+          // Clear name and qty for next entry, keep category and toggles
+          document.getElementById('itemName').value = '';
+          document.getElementById('itemQty').value = '1';
+          setTimeout(() => document.getElementById('itemName').focus(), 100);
+        } else {
+          closeModal();
+        }
+      })
+      .catch(() => {}); // Error already shown by fbOperation
   }
 }
 
@@ -3168,9 +3492,9 @@ function deleteItem() {
   const alwaysWarn = item.alwaysBring ? '\n\nThis item is marked as "Always Bring". Are you sure?' : '';
   const refs = getCurrentTripRefs();
   if (refs && confirm(`Delete "${item.name}"?${alwaysWarn}`)) {
-    refs.items.child(editingId).remove();
-    showToast('Item deleted');
-    closeModal();
+    fbOperation(refs.items.child(editingId).remove(), { successMsg: 'Item deleted' })
+      .then(() => closeModal())
+      .catch(() => {});
   }
 }
 
@@ -3181,8 +3505,7 @@ function confirmDeleteItem(id) {
   if (!refs) return;
   const alwaysWarn = item.alwaysBring ? '\n\nThis item is marked as "Always Bring". Are you sure?' : '';
   if (confirm(`Delete "${item.name}"?${alwaysWarn}`)) {
-    refs.items.child(id).remove();
-    showToast('Item deleted');
+    fbOperation(refs.items.child(id).remove(), { successMsg: 'Item deleted' });
   }
 }
 
@@ -3265,7 +3588,7 @@ function onCategoryChange() {
 function toggleAssignment() {
   const cat = document.getElementById('itemCategory').value;
   const show = CATEGORIES.find(c => c.name === cat)?.requiresAssignment;
-  document.getElementById('assignmentField').style.display = show ? 'block' : 'none';
+  document.getElementById('assignmentField').classList.toggle('u-hidden', !show);
 }
 
 // ══════════════════════════════════════════
@@ -3299,7 +3622,9 @@ function saveNewCategory() {
 
   const newCat = { name, icon, requiresAssignment };
   const refs = getCurrentTripRefs();
-  if (refs) refs.categories.push(newCat);
+  if (refs) {
+    fbOperation(refs.categories.push(newCat), { successMsg: 'Category added' });
+  }
   CATEGORIES.push(newCat);
 
   closeNewCatModal();
@@ -3682,6 +4007,9 @@ function confirmImport() {
 
   const refs = getCurrentTripRefs();
   if (!refs) return;
+
+  setLoading(true, `Importing ${toImport.length} items...`);
+
   const updates = {};
   for (const it of toImport) {
     const needsAssign = CATEGORIES.find(c => c.name === it.category)?.requiresAssignment;
@@ -3694,19 +4022,22 @@ function confirmImport() {
       needToBuy: it.needToBuy,
       alwaysBring: it.alwaysBring,
       assignedTo: needsAssign ? (it.assignedTo || null) : null,
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      order: Date.now() + Object.keys(updates).length // Ensure unique order
     };
   }
-  refs.items.update(updates);
   const skipped = parsedImportItems.length - toImport.length;
   let msg = `${toImport.length} items imported`;
   if (skipped > 0) msg += `, ${skipped} duplicates skipped`;
-  showToast(msg);
 
-  document.getElementById('importText').value = '';
-  document.getElementById('importSection').classList.remove('open');
-  closeImportPreview();
-  parsedImportItems = [];
+  fbOperation(refs.items.update(updates), { successMsg: msg })
+    .then(() => {
+      document.getElementById('importText').value = '';
+      document.getElementById('importSection').classList.remove('open');
+      closeImportPreview();
+      parsedImportItems = [];
+    })
+    .finally(() => setLoading(false));
 }
 
 // ══════════════════════════════════════════
@@ -3786,17 +4117,23 @@ function resetForNextTrip() {
   }
   if (!confirm(`Reset for next trip?\n\nThis will unpack all ${packedItems.length} packed items.\nYou can undo this within 24 hours.`)) return;
 
-  refs.state.child('lastResetSnapshot').set({
+  setLoading(true, 'Resetting items...');
+
+  // Save snapshot first, then unpack
+  fbOperation(refs.state.child('lastResetSnapshot').set({
     items: Object.fromEntries(packedItems.map(([id]) => [id, true])),
     timestamp: Date.now()
-  });
-
-  const updates = {};
-  packedItems.forEach(([id]) => { updates[`${id}/packed`] = false; });
-  refs.items.update(updates);
-  closeSettings();
-  showToast('All items unpacked', true);
-  checkUndoResetAvailable();
+  }), { silent: true })
+    .then(() => {
+      const updates = {};
+      packedItems.forEach(([id]) => { updates[`${id}/packed`] = false; });
+      return fbOperation(refs.items.update(updates), { successMsg: 'All items unpacked' });
+    })
+    .then(() => {
+      closeSettings();
+      checkUndoResetAvailable();
+    })
+    .finally(() => setLoading(false));
 }
 
 // ══════════════════════════════════════════
@@ -3832,11 +4169,14 @@ function undoLastReset() {
     if (!confirm(`Restore packed states from reset at:\n${when}?`)) return;
     const updates = {};
     Object.keys(snapshot.items).forEach(id => { updates[`${id}/packed`] = true; });
-    refs.items.update(updates);
-    refs.state.child('lastResetSnapshot').remove();
-    closeSettings();
-    showToast('Reset undone — packed states restored');
-    checkUndoResetAvailable();
+    fbOperation(refs.items.update(updates), { silent: true })
+      .then(() => fbOperation(refs.state.child('lastResetSnapshot').remove(), { silent: true }))
+      .then(() => {
+        closeSettings();
+        showToast('Reset undone — packed states restored');
+        checkUndoResetAvailable();
+      })
+      .catch(() => {});
   });
 }
 
@@ -3984,8 +4324,9 @@ function toggleNeedToBuy(id) {
   const refs = getCurrentTripRefs();
   if (!refs) return;
   const newVal = !item.needToBuy;
-  refs.items.child(id).update({ needToBuy: newVal });
-  showToast(newVal ? 'Added to shopping list' : 'Removed from shopping list');
+  fbOperation(refs.items.child(id).update({ needToBuy: newVal }), {
+    successMsg: newVal ? 'Added to shopping list' : 'Removed from shopping list'
+  });
 }
 
 function shareShoppingList() {
@@ -4447,7 +4788,7 @@ function openCreateTripModal() {
   createTripColor = '#1a3a5c';
   document.getElementById('createTripName').value = '';
   document.getElementById('cloneCheckbox').checked = false;
-  document.getElementById('cloneSourceTrip').style.display = 'none';
+  document.getElementById('cloneSourceTrip').classList.add('u-hidden');
   document.getElementById('createTripTitle').textContent = 'Create New Trip';
 
   // Reset icon/color pickers
@@ -4482,7 +4823,7 @@ function pickColor(el) {
 
 function toggleCloneSelect() {
   const checked = document.getElementById('cloneCheckbox').checked;
-  document.getElementById('cloneSourceTrip').style.display = checked ? 'block' : 'none';
+  document.getElementById('cloneSourceTrip').classList.toggle('u-hidden', !checked);
 }
 
 function saveTrip() {
@@ -4577,7 +4918,7 @@ function changeIconColorPrompt() {
   document.getElementById('createTripName').value = trips[id].name || '';
   document.getElementById('createTripTitle').textContent = 'Edit Trip';
   document.getElementById('cloneCheckbox').checked = false;
-  document.getElementById('cloneSourceTrip').style.display = 'none';
+  document.getElementById('cloneSourceTrip').classList.add('u-hidden');
   document.querySelectorAll('.icon-pick').forEach(b => b.classList.toggle('selected', b.dataset.icon === createTripIcon));
   document.querySelectorAll('.color-pick').forEach(b => b.classList.toggle('selected', b.dataset.color === createTripColor));
 

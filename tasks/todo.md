@@ -1,5 +1,16 @@
 # Trip Planner App - Task Tracking
 
+## Session: Feb 4, 2026
+
+### Completed This Session
+
+- [x] **Feature**: Added drag-and-drop reordering within categories (native HTML5 drag-and-drop)
+- [x] **Code Quality**: Extracted inline styles to CSS utility classes (u-flex, u-btn, u-text, etc.)
+- [x] **Code Quality**: Added Firebase error handling wrapper (`fbOperation()` function)
+- [x] **Code Quality**: Added loading states for bulk import and reset operations
+
+---
+
 ## Session: Feb 3, 2026
 
 ### Completed This Session
@@ -18,14 +29,12 @@
 
 #### UX Improvements
 - [ ] Add swipe gestures for mobile (swipe to mark packed/unpacked)
-- [ ] Add drag-and-drop reordering within categories
 - [ ] Add bulk actions (select multiple items to delete/move)
 - [ ] Improve empty state messaging per category
 - [ ] Add keyboard shortcuts for power users (e.g., `/` to focus search)
 
 #### Feature Ideas
 - [ ] Add item notes/comments field
-- [ ] Add quantity field for items (e.g., "Socks x5")
 - [ ] Add photo attachments for items
 - [ ] Add trip templates (save a trip as a reusable template)
 - [ ] Add sharing/collaboration improvements (show who added/modified items)
@@ -35,10 +44,6 @@
 - [ ] Add undo/redo for recent actions
 
 #### Code Quality
-- [ ] Extract inline styles to CSS classes
-- [ ] Add error boundaries for Firebase operations
-- [ ] Add loading states for async operations
-- [ ] Consider splitting into multiple files (CSS, JS modules)
 - [ ] Add unit tests for core functions
 
 #### Quick Wins
