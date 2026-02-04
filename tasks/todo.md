@@ -10,6 +10,8 @@
 - [x] **Code Quality**: Added loading states for bulk import and reset operations
 - [x] **Feature**: Added bulk add mode - add multiple items at once with textarea input
 - [x] **Feature**: Added offline queue with localStorage backup for data safety
+- [x] **Feature**: Added category reordering via drag-and-drop (persisted to Firebase)
+- [x] **Feature**: Added export to PDF with print-optimized checklist layout
 
 ---
 
@@ -40,9 +42,7 @@
 - [ ] Add photo attachments for items
 - [ ] Add trip templates (save a trip as a reusable template)
 - [ ] Add sharing/collaboration improvements (show who added/modified items)
-- [ ] Add categories reordering/customization
 - [ ] Add dark mode support
-- [ ] Add export to PDF or printable checklist
 - [ ] Add undo/redo for recent actions
 
 #### Code Quality
