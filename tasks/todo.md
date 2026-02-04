@@ -8,6 +8,8 @@
 - [x] **Code Quality**: Extracted inline styles to CSS utility classes (u-flex, u-btn, u-text, etc.)
 - [x] **Code Quality**: Added Firebase error handling wrapper (`fbOperation()` function)
 - [x] **Code Quality**: Added loading states for bulk import and reset operations
+- [x] **Feature**: Added bulk add mode - add multiple items at once with textarea input
+- [x] **Feature**: Added offline queue with localStorage backup for data safety
 
 ---
 

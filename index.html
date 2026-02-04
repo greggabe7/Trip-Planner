@@ -778,6 +778,19 @@
   }
   .offline-banner.visible { display: flex; }
   .offline-banner .offline-icon { font-size: 15px; }
+  .pending-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    background: var(--orange-buy);
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-left: 4px;
+  }
   .sync-banner {
     display: none;
     padding: 8px 16px;
@@ -1908,6 +1921,54 @@
   }
   .u-color-swatch.selected { border-color: #333; }
 
+  /* Modal Tabs (Bulk Add) */
+  .modal-tabs {
+    display: flex;
+    gap: 0;
+    margin: -16px -16px 16px -16px;
+    border-bottom: 1px solid var(--snow-gray);
+  }
+  .modal-tab {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    background: none;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--gray-light);
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .modal-tab.active {
+    color: var(--blue-mid);
+    border-bottom-color: var(--blue-mid);
+  }
+  .modal-tab:hover:not(.active) { color: var(--gray-text); }
+
+  .modal-content-single,
+  .modal-content-bulk { display: none; }
+  .modal-content-single.active,
+  .modal-content-bulk.active { display: block; }
+
+  .bulk-add-textarea {
+    width: 100%;
+    min-height: 150px;
+    padding: 12px;
+    border: 1px solid var(--snow-gray);
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+    margin-bottom: 12px;
+  }
+  .bulk-add-hint {
+    font-size: 12px;
+    color: var(--gray-light);
+    margin-bottom: 12px;
+  }
+
   /* Loading Overlay */
   .loading-overlay {
     position: fixed;
@@ -1984,7 +2045,9 @@
 
 <!-- ── Offline / Sync Banners ── -->
 <div class="offline-banner" id="offlineBanner" role="alert" aria-live="assertive">
-  <span class="offline-icon" aria-hidden="true">📡</span> You're offline. Changes will sync when connected.
+  <span class="offline-icon" aria-hidden="true">📡</span>
+  <span id="offlineBannerText">You're offline. Changes will sync when connected.</span>
+  <span class="pending-badge" id="pendingBadge" style="display:none;">0</span>
 </div>
 <div class="sync-banner" id="syncBanner" role="status" aria-live="polite">
   <span aria-hidden="true">🔄</span> <span id="syncText">Syncing...</span>
@@ -2265,38 +2328,77 @@
 <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
   <div class="modal" onclick="event.stopPropagation()">
     <h3 id="modalTitle">Add Item</h3>
-    <label>Item Name</label>
-    <input type="text" id="itemName" placeholder="e.g. Snow boots" autocomplete="off" maxlength="100">
-    <div class="u-flex u-flex-gap-md">
-      <div class="u-flex-1">
-        <label>Category</label>
-        <select id="itemCategory" onchange="onCategoryChange()">
+
+    <!-- Tabs (hidden when editing) -->
+    <div class="modal-tabs" id="modalTabs">
+      <button class="modal-tab active" onclick="switchModalTab('single')">Single Item</button>
+      <button class="modal-tab" onclick="switchModalTab('bulk')">Bulk Add</button>
+    </div>
+
+    <!-- Single Item Mode -->
+    <div class="modal-content-single active" id="modalContentSingle">
+      <label>Item Name</label>
+      <input type="text" id="itemName" placeholder="e.g. Snow boots" autocomplete="off" maxlength="100">
+      <div class="u-flex u-flex-gap-md">
+        <div class="u-flex-1">
+          <label>Category</label>
+          <select id="itemCategory" onchange="onCategoryChange()">
+          </select>
+        </div>
+        <div class="u-flex-1">
+          <label>Quantity</label>
+          <input type="number" id="itemQty" value="1" min="1">
+        </div>
+      </div>
+      <div id="assignmentField" class="u-hidden">
+        <label>Assign To</label>
+        <select id="itemAssign">
+          <option value="">Unassigned</option>
+          <option value="Greg">Greg</option>
+          <option value="Danielle">Danielle</option>
+          <option value="Helena">Helena</option>
+          <option value="Maria">Maria</option>
         </select>
       </div>
-      <div class="u-flex-1">
-        <label>Quantity</label>
-        <input type="number" id="itemQty" value="1" min="1">
+      <div class="checkbox-row">
+        <label><input type="checkbox" id="itemBuy"> 🛒 Need to Buy</label>
+        <label><input type="checkbox" id="itemAlways"> ⭐ Always Bring</label>
+      </div>
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+        <button class="btn-danger" id="deleteBtn" style="display:none;" onclick="deleteItem()">Delete</button>
+        <button class="btn-save-another" id="saveAnotherBtn" onclick="saveItem(true)">Save &amp; Add Another</button>
+        <button class="btn-primary" onclick="saveItem(false)">Save</button>
       </div>
     </div>
-    <div id="assignmentField" class="u-hidden">
-      <label>Assign To</label>
-      <select id="itemAssign">
-        <option value="">Unassigned</option>
-        <option value="Greg">Greg</option>
-        <option value="Danielle">Danielle</option>
-        <option value="Helena">Helena</option>
-        <option value="Maria">Maria</option>
-      </select>
-    </div>
-    <div class="checkbox-row">
-      <label><input type="checkbox" id="itemBuy"> 🛒 Need to Buy</label>
-      <label><input type="checkbox" id="itemAlways"> ⭐ Always Bring</label>
-    </div>
-    <div class="modal-buttons">
-      <button class="btn-secondary" onclick="closeModal()">Cancel</button>
-      <button class="btn-danger" id="deleteBtn" style="display:none;" onclick="deleteItem()">Delete</button>
-      <button class="btn-save-another" id="saveAnotherBtn" onclick="saveItem(true)">Save &amp; Add Another</button>
-      <button class="btn-primary" onclick="saveItem(false)">Save</button>
+
+    <!-- Bulk Add Mode -->
+    <div class="modal-content-bulk" id="modalContentBulk">
+      <label>Category for all items</label>
+      <select id="bulkCategory"></select>
+      <div id="bulkAssignmentField" class="u-hidden">
+        <label>Assign To</label>
+        <select id="bulkAssign">
+          <option value="">Unassigned</option>
+          <option value="Greg">Greg</option>
+          <option value="Danielle">Danielle</option>
+          <option value="Helena">Helena</option>
+          <option value="Maria">Maria</option>
+        </select>
+      </div>
+      <label>Items (one per line)</label>
+      <textarea class="bulk-add-textarea" id="bulkAddText" placeholder="Ski jacket&#10;Snow boots&#10;2x Gloves&#10;Sunscreen (x3)"></textarea>
+      <div class="bulk-add-hint">
+        💡 Tip: Use "2x Item" or "Item (x3)" for quantities
+      </div>
+      <div class="checkbox-row">
+        <label><input type="checkbox" id="bulkBuy"> 🛒 Need to Buy (all)</label>
+        <label><input type="checkbox" id="bulkAlways"> ⭐ Always Bring (all)</label>
+      </div>
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+        <button class="btn-primary" onclick="saveBulkItems()">Add All Items</button>
+      </div>
     </div>
   </div>
 </div>
@@ -2378,6 +2480,213 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
+
+// Enable offline persistence (Firebase RTDB caches data automatically)
+// We'll add a localStorage backup layer for extra safety
+db.goOnline(); // Ensure we start connected
+
+// ══════════════════════════════════════════
+// Offline Queue Management
+// ══════════════════════════════════════════
+
+const OFFLINE_QUEUE_KEY = 'tripPlanner_offlineQueue';
+let pendingOperations = [];
+
+/**
+ * Load pending operations from localStorage on startup
+ */
+function loadOfflineQueue() {
+  try {
+    const stored = localStorage.getItem(OFFLINE_QUEUE_KEY);
+    if (stored) {
+      pendingOperations = JSON.parse(stored);
+      updatePendingBadge();
+    }
+  } catch (e) {
+    console.warn('Failed to load offline queue:', e);
+    pendingOperations = [];
+  }
+}
+
+/**
+ * Save pending operations to localStorage
+ */
+function saveOfflineQueue() {
+  try {
+    localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(pendingOperations));
+    updatePendingBadge();
+  } catch (e) {
+    console.warn('Failed to save offline queue:', e);
+  }
+}
+
+/**
+ * Add an operation to the offline queue
+ * @param {string} type - Operation type (update, push, remove)
+ * @param {string} path - Firebase path
+ * @param {any} data - Data for the operation
+ */
+function queueOfflineOperation(type, path, data) {
+  pendingOperations.push({
+    id: Date.now() + Math.random().toString(36).substr(2, 9),
+    type,
+    path,
+    data,
+    timestamp: Date.now()
+  });
+  saveOfflineQueue();
+}
+
+/**
+ * Process queued operations when back online
+ */
+function processOfflineQueue() {
+  if (pendingOperations.length === 0) return Promise.resolve();
+
+  const ops = [...pendingOperations];
+  const promises = ops.map(op => {
+    const ref = db.ref(op.path);
+    switch (op.type) {
+      case 'update': return ref.update(op.data);
+      case 'set': return ref.set(op.data);
+      case 'push': return ref.push(op.data);
+      case 'remove': return ref.remove();
+      default: return Promise.resolve();
+    }
+  });
+
+  return Promise.all(promises)
+    .then(() => {
+      pendingOperations = [];
+      saveOfflineQueue();
+      console.log(`Processed ${ops.length} queued operations`);
+    })
+    .catch(err => {
+      console.error('Failed to process some offline operations:', err);
+    });
+}
+
+/**
+ * Clear the offline queue (after successful sync)
+ */
+function clearOfflineQueue() {
+  pendingOperations = [];
+  saveOfflineQueue();
+}
+
+/**
+ * Get count of pending operations
+ */
+function getPendingCount() {
+  return pendingOperations.length;
+}
+
+/**
+ * Update the pending operations badge in UI
+ */
+function updatePendingBadge() {
+  const count = pendingOperations.length;
+  const badge = document.getElementById('pendingBadge');
+  const bannerText = document.getElementById('offlineBannerText');
+
+  if (badge) {
+    badge.textContent = count;
+    badge.style.display = count > 0 ? 'inline-flex' : 'none';
+  }
+  if (bannerText) {
+    bannerText.textContent = count > 0
+      ? `You're offline. ${count} change${count !== 1 ? 's' : ''} pending sync.`
+      : "You're offline. Changes will sync when connected.";
+  }
+}
+
+// Load queue on startup
+loadOfflineQueue();
+
+// ══════════════════════════════════════════
+// LocalStorage Data Backup
+// ══════════════════════════════════════════
+
+const BACKUP_KEY_PREFIX = 'tripPlanner_backup_';
+
+/**
+ * Backup current trip items to localStorage
+ */
+function backupItemsToLocalStorage() {
+  if (!currentTripId || Object.keys(items).length === 0) return;
+  try {
+    localStorage.setItem(BACKUP_KEY_PREFIX + currentTripId, JSON.stringify({
+      items,
+      timestamp: Date.now()
+    }));
+  } catch (e) {
+    console.warn('Failed to backup items:', e);
+  }
+}
+
+/**
+ * Restore items from localStorage backup if Firebase data is empty
+ * @returns {boolean} true if restored from backup
+ */
+function tryRestoreFromBackup() {
+  if (!currentTripId) return false;
+  try {
+    const stored = localStorage.getItem(BACKUP_KEY_PREFIX + currentTripId);
+    if (!stored) return false;
+
+    const backup = JSON.parse(stored);
+    const age = Date.now() - (backup.timestamp || 0);
+
+    // Only restore if backup is less than 7 days old and we have no items
+    if (age < 7 * 24 * 60 * 60 * 1000 && Object.keys(items).length === 0 && Object.keys(backup.items || {}).length > 0) {
+      console.log('Restoring from localStorage backup...');
+      items = backup.items;
+      // Try to sync back to Firebase
+      const refs = getCurrentTripRefs();
+      if (refs && navigator.onLine) {
+        refs.items.set(items);
+      }
+      return true;
+    }
+  } catch (e) {
+    console.warn('Failed to restore from backup:', e);
+  }
+  return false;
+}
+
+/**
+ * Clear old backups (keep only last 5 trips)
+ */
+function cleanupOldBackups() {
+  try {
+    const backupKeys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(BACKUP_KEY_PREFIX)) {
+        const stored = localStorage.getItem(key);
+        if (stored) {
+          const backup = JSON.parse(stored);
+          backupKeys.push({ key, timestamp: backup.timestamp || 0 });
+        }
+      }
+    }
+    // Sort by timestamp, keep newest 5
+    backupKeys.sort((a, b) => b.timestamp - a.timestamp);
+    backupKeys.slice(5).forEach(({ key }) => localStorage.removeItem(key));
+  } catch (e) {
+    // Ignore cleanup errors
+  }
+}
+
+// Periodically backup items (every 30 seconds if items exist)
+setInterval(() => {
+  if (currentTripId && Object.keys(items).length > 0) {
+    backupItemsToLocalStorage();
+  }
+}, 30000);
+
+// Cleanup old backups on startup
+cleanupOldBackups();
 
 // ══════════════════════════════════════════
 // Firebase Error Handling
@@ -2647,6 +2956,15 @@ function attachTripListeners(tripId) {
   // Items listener
   const itemCb = refs.items.on('value', (snapshot) => {
     items = snapshot.val() || {};
+
+    // Try to restore from backup if Firebase returned empty but we have a backup
+    if (Object.keys(items).length === 0) {
+      tryRestoreFromBackup();
+    } else {
+      // Backup items when they change
+      backupItemsToLocalStorage();
+    }
+
     renderCurrentMode();
     updateStats();
     updateTripMetadata();
@@ -3538,6 +3856,7 @@ function rebuildFilterPills() {
 function openAddModal() {
   editingId = null;
   rebuildCategoryDropdowns();
+  rebuildBulkCategoryDropdown();
   document.getElementById('modalTitle').textContent = 'Add Item';
   document.getElementById('itemName').value = '';
   document.getElementById('itemCategory').value = (currentFilter && currentFilter !== 'all') ? currentFilter : 'Miscellaneous';
@@ -3547,6 +3866,15 @@ function openAddModal() {
   document.getElementById('itemAssign').value = '';
   document.getElementById('deleteBtn').style.display = 'none';
   document.getElementById('saveAnotherBtn').style.display = '';
+  // Reset bulk add fields
+  document.getElementById('bulkAddText').value = '';
+  document.getElementById('bulkCategory').value = (currentFilter && currentFilter !== 'all') ? currentFilter : 'Miscellaneous';
+  document.getElementById('bulkBuy').checked = false;
+  document.getElementById('bulkAlways').checked = false;
+  document.getElementById('bulkAssign').value = '';
+  // Show tabs and reset to single mode
+  document.getElementById('modalTabs').style.display = '';
+  switchModalTab('single');
   toggleAssignment();
   document.getElementById('modalOverlay').classList.add('open');
   setTimeout(() => document.getElementById('itemName').focus(), 300);
@@ -3566,8 +3894,109 @@ function openEditModal(id) {
   document.getElementById('itemAssign').value = item.assignedTo || '';
   document.getElementById('deleteBtn').style.display = 'block';
   document.getElementById('saveAnotherBtn').style.display = 'none';
+  // Hide tabs when editing (single item only)
+  document.getElementById('modalTabs').style.display = 'none';
+  switchModalTab('single');
   toggleAssignment();
   document.getElementById('modalOverlay').classList.add('open');
+}
+
+function switchModalTab(mode) {
+  const tabs = document.querySelectorAll('.modal-tab');
+  tabs.forEach((tab, i) => tab.classList.toggle('active', i === (mode === 'single' ? 0 : 1)));
+  document.getElementById('modalContentSingle').classList.toggle('active', mode === 'single');
+  document.getElementById('modalContentBulk').classList.toggle('active', mode === 'bulk');
+  if (mode === 'bulk') {
+    toggleBulkAssignment();
+    setTimeout(() => document.getElementById('bulkAddText').focus(), 100);
+  } else {
+    setTimeout(() => document.getElementById('itemName').focus(), 100);
+  }
+}
+
+function rebuildBulkCategoryDropdown() {
+  const sel = document.getElementById('bulkCategory');
+  sel.innerHTML = CATEGORIES.map(c =>
+    `<option value="${c.name}">${c.icon} ${c.name}</option>`
+  ).join('');
+  sel.onchange = toggleBulkAssignment;
+}
+
+function toggleBulkAssignment() {
+  const cat = document.getElementById('bulkCategory').value;
+  const show = CATEGORIES.find(c => c.name === cat)?.requiresAssignment;
+  document.getElementById('bulkAssignmentField').classList.toggle('u-hidden', !show);
+}
+
+function parseBulkItems(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+  return lines.map(line => {
+    let name = line;
+    let quantity = 1;
+
+    // Match patterns like "2x Item", "2 x Item", "2 - Item"
+    const prefixMatch = line.match(/^(\d+)\s*[x\-]\s*(.+)$/i);
+    if (prefixMatch) {
+      quantity = parseInt(prefixMatch[1]) || 1;
+      name = prefixMatch[2].trim();
+    } else {
+      // Match patterns like "Item (x2)", "Item x3", "Item (3)"
+      const suffixMatch = line.match(/^(.+?)\s*(?:\(x?(\d+)\)|x(\d+))$/i);
+      if (suffixMatch) {
+        name = suffixMatch[1].trim();
+        quantity = parseInt(suffixMatch[2] || suffixMatch[3]) || 1;
+      }
+    }
+
+    return { name, quantity };
+  });
+}
+
+function saveBulkItems() {
+  const text = document.getElementById('bulkAddText').value.trim();
+  if (!text) {
+    showToast('Enter at least one item');
+    document.getElementById('bulkAddText').focus();
+    return;
+  }
+
+  const parsedItems = parseBulkItems(text);
+  if (parsedItems.length === 0) {
+    showToast('No valid items found');
+    return;
+  }
+
+  const category = document.getElementById('bulkCategory').value;
+  const needToBuy = document.getElementById('bulkBuy').checked;
+  const alwaysBring = document.getElementById('bulkAlways').checked;
+  const needsAssign = CATEGORIES.find(c => c.name === category)?.requiresAssignment;
+  const assignedTo = needsAssign ? (document.getElementById('bulkAssign').value || null) : null;
+
+  const refs = getCurrentTripRefs();
+  if (!refs) return;
+
+  setLoading(true, `Adding ${parsedItems.length} items...`);
+
+  const updates = {};
+  const baseTime = Date.now();
+  parsedItems.forEach((item, i) => {
+    const key = refs.items.push().key;
+    updates[key] = {
+      name: item.name,
+      category,
+      quantity: item.quantity,
+      packed: false,
+      needToBuy,
+      alwaysBring,
+      assignedTo,
+      createdAt: baseTime,
+      order: baseTime + i
+    };
+  });
+
+  fbOperation(refs.items.update(updates), { successMsg: `${parsedItems.length} items added` })
+    .then(() => closeModal())
+    .finally(() => setLoading(false));
 }
 
 function closeModal(e) {
@@ -5145,6 +5574,7 @@ function updateOnlineStatus() {
   const nowOnline = navigator.onLine;
   const headerEl = document.querySelector('header');
   const offlineBanner = document.getElementById('offlineBanner');
+  const offlineBannerText = document.getElementById('offlineBannerText');
   const syncBanner = document.getElementById('syncBanner');
   const syncText = document.getElementById('syncText');
 
@@ -5155,6 +5585,7 @@ function updateOnlineStatus() {
     headerEl.classList.add('offline');
     offlineBanner.classList.add('visible');
     syncBanner.classList.remove('visible');
+    updatePendingBadge();
   } else if (!isOnline && nowOnline) {
     // Coming back online
     isOnline = true;
@@ -5162,18 +5593,25 @@ function updateOnlineStatus() {
     offlineBanner.classList.remove('visible');
 
     if (wasOffline) {
+      const pendingCount = getPendingCount();
       // Show syncing feedback
-      syncText.textContent = 'Syncing...';
+      syncText.textContent = pendingCount > 0 ? `Syncing ${pendingCount} changes...` : 'Syncing...';
       syncBanner.classList.add('visible');
-      // Firebase RTDB auto-syncs queued writes on reconnect.
-      // Give it a moment then show success.
-      setTimeout(() => {
-        syncText.textContent = 'All changes synced ✓';
-        setTimeout(() => {
-          syncBanner.classList.remove('visible');
-          wasOffline = false;
-        }, 2500);
-      }, 1500);
+
+      // Process our localStorage queue if any
+      processOfflineQueue()
+        .then(() => {
+          // Firebase RTDB also auto-syncs queued writes on reconnect.
+          // Give it a moment then show success.
+          setTimeout(() => {
+            syncText.textContent = 'All changes synced ✓';
+            clearOfflineQueue();
+            setTimeout(() => {
+              syncBanner.classList.remove('visible');
+              wasOffline = false;
+            }, 2500);
+          }, 1500);
+        });
     }
   }
 }
@@ -5194,19 +5632,26 @@ db.ref('.info/connected').on('value', (snap) => {
     headerEl.classList.add('offline');
     offlineBanner.classList.add('visible');
     wasOffline = true;
+    updatePendingBadge();
   } else if (connected === true) {
     headerEl.classList.remove('offline');
     offlineBanner.classList.remove('visible');
     if (wasOffline) {
-      syncText.textContent = 'Syncing...';
+      const pendingCount = getPendingCount();
+      syncText.textContent = pendingCount > 0 ? `Syncing ${pendingCount} changes...` : 'Syncing...';
       syncBanner.classList.add('visible');
-      setTimeout(() => {
-        syncText.textContent = 'All changes synced ✓';
-        setTimeout(() => {
-          syncBanner.classList.remove('visible');
-          wasOffline = false;
-        }, 2500);
-      }, 1500);
+
+      processOfflineQueue()
+        .then(() => {
+          setTimeout(() => {
+            syncText.textContent = 'All changes synced ✓';
+            clearOfflineQueue();
+            setTimeout(() => {
+              syncBanner.classList.remove('visible');
+              wasOffline = false;
+            }, 2500);
+          }, 1500);
+        });
     }
   }
 });
