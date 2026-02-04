@@ -1704,6 +1704,8 @@
     text-align: center;
   }
   .category-card:active { transform: scale(.97); }
+  .category-card.dragging { opacity: 0.5; transform: scale(.95); }
+  .category-card.drag-over { box-shadow: 0 0 0 3px var(--blue-mid); }
   .category-card-icon { font-size: 32px; margin-bottom: 6px; }
   .category-card-name { font-size: 14px; font-weight: 600; color: var(--blue-dark); margin-bottom: 4px; }
   .category-card-count { font-size: 12px; color: var(--gray-text, var(--gray-light)); margin-bottom: 8px; }
@@ -2440,6 +2442,9 @@
   <div class="view-toggle" id="toggleUnpacked" onclick="toggleViewFilter('unpacked', this)" role="switch" aria-checked="false" tabindex="0" aria-label="Show unpacked only">
     <span class="toggle-dot" aria-hidden="true"></span> Unpacked
   </div>
+  <div class="view-toggle" id="togglePacked" onclick="toggleViewFilter('packed', this)" role="switch" aria-checked="false" tabindex="0" aria-label="Show packed only">
+    <span class="toggle-dot" aria-hidden="true"></span> Packed
+  </div>
   <div class="view-toggle" id="toggleAllItems" onclick="toggleViewFilter('allitems', this)" role="switch" aria-checked="false" tabindex="0" aria-label="Show all items">
     <span class="toggle-dot" aria-hidden="true"></span> 📝 Full List
   </div>
@@ -3083,6 +3088,7 @@ let currentTripId = null;
 let currentFilter = 'all';
 let editingId = null;
 let viewUnpackedOnly = false;
+let viewPackedOnly = false;
 let viewShoppingOnly = false;
 let viewToDoOnly = false;
 let personFilterValue = '';
@@ -3254,6 +3260,11 @@ function getFilteredItems() {
     list = list.filter(([, it]) => !it.packed);
   }
 
+  // Packed only
+  if (viewPackedOnly) {
+    list = list.filter(([, it]) => it.packed);
+  }
+
   // Shopping list only
   if (viewShoppingOnly) {
     list = list.filter(([, it]) => it.needToBuy && !it.packed);
@@ -3266,9 +3277,21 @@ function toggleViewFilter(which, btn) {
   const viewToggles = { shopping: 'toggleShopping', todo: 'toggleToDo', allitems: 'toggleAllItems' };
 
   if (which === 'unpacked') {
-    // Unpacked is a layered filter — doesn't affect other view modes
+    // Unpacked/packed are mutually exclusive layered filters
     viewUnpackedOnly = !viewUnpackedOnly;
+    if (viewUnpackedOnly) viewPackedOnly = false; // Turn off packed if turning on unpacked
     btn.classList.toggle('active', viewUnpackedOnly);
+    document.getElementById('togglePacked')?.classList.remove('active');
+    renderCurrentMode();
+    return;
+  }
+
+  if (which === 'packed') {
+    // Packed/unpacked are mutually exclusive layered filters
+    viewPackedOnly = !viewPackedOnly;
+    if (viewPackedOnly) viewUnpackedOnly = false; // Turn off unpacked if turning on packed
+    btn.classList.toggle('active', viewPackedOnly);
+    document.getElementById('toggleUnpacked')?.classList.remove('active');
     renderCurrentMode();
     return;
   }
@@ -3281,14 +3304,14 @@ function toggleViewFilter(which, btn) {
   const states = { shopping: () => viewShoppingOnly, todo: () => viewToDoOnly, allitems: () => viewAllItems };
   const isActive = states[which]();
 
-  // If activating a view, deactivate other views (but NOT unpacked)
+  // If activating a view, deactivate other views (but NOT unpacked/packed)
   if (isActive) {
     if (which !== 'shopping') { viewShoppingOnly = false; }
     if (which !== 'todo') { viewToDoOnly = false; }
     if (which !== 'allitems') { viewAllItems = false; }
   }
 
-  // Update view toggle button classes (not unpacked)
+  // Update view toggle button classes (not unpacked/packed)
   for (const [key, id] of Object.entries(viewToggles)) {
     const el = document.getElementById(id);
     if (el) el.classList.toggle('active', states[key]());
@@ -3487,7 +3510,7 @@ function renderCategoryDashboard(allItems, filteredItems) {
       countLabel = `${packedInCat} of ${totalInCat} packed`;
     }
 
-    html += `<div class="category-card" onclick="expandCategory('${cat.name.replace(/'/g,"\\'")}')">
+    html += `<div class="category-card" data-category="${cat.name}" draggable="true">
       <div class="category-card-icon">${cat.icon}</div>
       <div class="category-card-name">${cat.name}</div>
       <div class="category-card-count">${countLabel}</div>
@@ -3497,6 +3520,21 @@ function renderCategoryDashboard(allItems, filteredItems) {
 
   html += '</div>';
   main.innerHTML = html;
+
+  // Attach drag-and-drop and click handlers to category cards
+  main.querySelectorAll('.category-card').forEach(card => {
+    card.addEventListener('click', (e) => {
+      // Only expand if we didn't just finish dragging
+      if (!catCardJustDragged) {
+        expandCategory(card.dataset.category);
+      }
+    });
+    card.addEventListener('dragstart', handleCatCardDragStart);
+    card.addEventListener('dragover', handleCatCardDragOver);
+    card.addEventListener('dragleave', handleCatCardDragLeave);
+    card.addEventListener('drop', handleCatCardDrop);
+    card.addEventListener('dragend', handleCatCardDragEnd);
+  });
 }
 
 function renderExpandedCategory(categoryName, allItems, filteredItems) {
@@ -4738,6 +4776,7 @@ function showAlwaysBring() {
   // Clear active toggles and show custom view
   viewShoppingOnly = false;
   viewUnpackedOnly = false;
+  viewPackedOnly = false;
   viewToDoOnly = false;
   viewAllItems = false;
   document.getElementById('toggleShopping').classList.remove('active');
@@ -5053,26 +5092,29 @@ function closeSettings(e) {
 // Category Reordering
 // ══════════════════════════════════════════
 let categoryOrder = []; // Stores order of category names
-let reorderDraggedIdx = null;
+let catReorderDraggedEl = null;
 
 function openCategoryReorder() {
   const list = document.getElementById('categoryReorderList');
   // Use current order from categoryOrder, falling back to CATEGORIES order
   const orderedCats = getOrderedCategories();
 
-  list.innerHTML = orderedCats.map((cat, idx) => `
-    <div class="category-reorder-item" data-idx="${idx}" data-name="${cat.name}"
-         draggable="true"
-         ondragstart="handleCatReorderDragStart(event, ${idx})"
-         ondragover="handleCatReorderDragOver(event)"
-         ondragleave="handleCatReorderDragLeave(event)"
-         ondrop="handleCatReorderDrop(event, ${idx})"
-         ondragend="handleCatReorderDragEnd(event)">
+  list.innerHTML = orderedCats.map((cat) => `
+    <div class="category-reorder-item" data-name="${cat.name}" draggable="true">
       <span class="category-reorder-handle">⋮⋮</span>
       <span class="category-reorder-icon">${cat.icon}</span>
       <span class="category-reorder-name">${cat.name}</span>
     </div>
   `).join('');
+
+  // Attach event listeners
+  list.querySelectorAll('.category-reorder-item').forEach(item => {
+    item.addEventListener('dragstart', handleCatReorderDragStart);
+    item.addEventListener('dragover', handleCatReorderDragOver);
+    item.addEventListener('dragleave', handleCatReorderDragLeave);
+    item.addEventListener('drop', handleCatReorderDrop);
+    item.addEventListener('dragend', handleCatReorderDragEnd);
+  });
 
   document.getElementById('categoryReorderOverlay').classList.add('open');
 }
@@ -5082,16 +5124,21 @@ function closeCategoryReorder(e) {
   document.getElementById('categoryReorderOverlay').classList.remove('open');
 }
 
-function handleCatReorderDragStart(e, idx) {
-  reorderDraggedIdx = idx;
-  e.target.classList.add('dragging');
+function handleCatReorderDragStart(e) {
+  catReorderDraggedEl = e.target.closest('.category-reorder-item');
+  catReorderDraggedEl.classList.add('dragging');
   e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', ''); // Required for Firefox
 }
 
 function handleCatReorderDragOver(e) {
   e.preventDefault();
   const item = e.target.closest('.category-reorder-item');
-  if (item) item.classList.add('drag-over');
+  if (item && item !== catReorderDraggedEl) {
+    // Clear all drag-over states first
+    document.querySelectorAll('.category-reorder-item.drag-over').forEach(el => el.classList.remove('drag-over'));
+    item.classList.add('drag-over');
+  }
 }
 
 function handleCatReorderDragLeave(e) {
@@ -5099,30 +5146,28 @@ function handleCatReorderDragLeave(e) {
   if (item) item.classList.remove('drag-over');
 }
 
-function handleCatReorderDrop(e, targetIdx) {
+function handleCatReorderDrop(e) {
   e.preventDefault();
-  if (reorderDraggedIdx === null || reorderDraggedIdx === targetIdx) return;
+  const targetItem = e.target.closest('.category-reorder-item');
+  if (!catReorderDraggedEl || !targetItem || catReorderDraggedEl === targetItem) return;
 
   const list = document.getElementById('categoryReorderList');
   const items = Array.from(list.children);
-  const draggedItem = items[reorderDraggedIdx];
-  const targetItem = items[targetIdx];
+  const draggedIdx = items.indexOf(catReorderDraggedEl);
+  const targetIdx = items.indexOf(targetItem);
 
-  // Reorder DOM
-  if (reorderDraggedIdx < targetIdx) {
-    targetItem.after(draggedItem);
+  // Reorder DOM based on relative position
+  if (draggedIdx < targetIdx) {
+    targetItem.after(catReorderDraggedEl);
   } else {
-    targetItem.before(draggedItem);
+    targetItem.before(catReorderDraggedEl);
   }
-
-  // Update data-idx attributes
-  Array.from(list.children).forEach((item, i) => item.dataset.idx = i);
 
   document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
 }
 
 function handleCatReorderDragEnd(e) {
-  reorderDraggedIdx = null;
+  catReorderDraggedEl = null;
   document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
   document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
 }
@@ -5164,6 +5209,73 @@ function getOrderedCategories() {
 
 function reorderCategoriesArray() {
   CATEGORIES = getOrderedCategories();
+}
+
+// ══════════════════════════════════════════
+// Category Card Drag-and-Drop (Dashboard)
+// ══════════════════════════════════════════
+let catCardDraggedEl = null;
+let catCardJustDragged = false;
+
+function handleCatCardDragStart(e) {
+  catCardDraggedEl = e.target.closest('.category-card');
+  catCardJustDragged = true;
+  setTimeout(() => catCardDraggedEl?.classList.add('dragging'), 0);
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', '');
+}
+
+function handleCatCardDragOver(e) {
+  e.preventDefault();
+  const card = e.target.closest('.category-card');
+  if (card && card !== catCardDraggedEl) {
+    document.querySelectorAll('.category-card.drag-over').forEach(el => el.classList.remove('drag-over'));
+    card.classList.add('drag-over');
+  }
+}
+
+function handleCatCardDragLeave(e) {
+  const card = e.target.closest('.category-card');
+  if (card) card.classList.remove('drag-over');
+}
+
+function handleCatCardDrop(e) {
+  e.preventDefault();
+  const targetCard = e.target.closest('.category-card');
+  if (!catCardDraggedEl || !targetCard || catCardDraggedEl === targetCard) return;
+
+  const dashboard = document.querySelector('.category-dashboard');
+  const cards = Array.from(dashboard.querySelectorAll('.category-card'));
+  const draggedIdx = cards.indexOf(catCardDraggedEl);
+  const targetIdx = cards.indexOf(targetCard);
+
+  // Reorder DOM
+  if (draggedIdx < targetIdx) {
+    targetCard.after(catCardDraggedEl);
+  } else {
+    targetCard.before(catCardDraggedEl);
+  }
+
+  // Save the new order to Firebase
+  const newOrder = Array.from(dashboard.querySelectorAll('.category-card')).map(c => c.dataset.category);
+  const refs = getCurrentTripRefs();
+  if (refs) {
+    fbOperation(refs.state.child('categoryOrder').set(newOrder), { successMsg: 'Category order saved', silent: false })
+      .then(() => {
+        categoryOrder = newOrder;
+        reorderCategoriesArray();
+      });
+  }
+
+  document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+}
+
+function handleCatCardDragEnd(e) {
+  catCardDraggedEl?.classList.remove('dragging');
+  catCardDraggedEl = null;
+  document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+  // Clear the flag after click would have fired
+  setTimeout(() => { catCardJustDragged = false; }, 100);
 }
 
 // ══════════════════════════════════════════
@@ -5561,6 +5673,7 @@ function showTripView(tripId) {
   // Reset filters/mode
   currentFilter = 'all';
   viewUnpackedOnly = false;
+  viewPackedOnly = false;
   viewShoppingOnly = false;
   viewToDoOnly = false;
   viewAllItems = false;
@@ -5568,6 +5681,7 @@ function showTripView(tripId) {
   searchQuery = '';
   currentMode = 'packing';
   document.getElementById('toggleUnpacked')?.classList.remove('active');
+  document.getElementById('togglePacked')?.classList.remove('active');
   document.getElementById('toggleToDo')?.classList.remove('active');
   document.getElementById('toggleAllItems')?.classList.remove('active');
   document.getElementById('toggleShopping')?.classList.remove('active');
