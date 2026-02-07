@@ -155,10 +155,8 @@
   /* ── Countdown Banner ── */
   .countdown-banner {
     display: none;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 6px 16px;
+    flex-direction: column;
+    padding: 8px 16px 18px;
     background: rgba(255,255,255,0.15);
     border-radius: 8px;
     margin-top: 8px;
@@ -166,6 +164,12 @@
     font-weight: 600;
   }
   .countdown-banner.visible { display: flex; }
+  .countdown-text-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
   .countdown-banner .countdown-days {
     font-size: 18px;
     font-weight: 700;
@@ -189,6 +193,44 @@
     margin-left: 4px;
   }
   .countdown-banner .edit-date-btn:hover { opacity: 1; }
+
+  /* ── Countdown Progress Bar ── */
+  .countdown-bar {
+    position: relative;
+    width: 100%;
+    height: 12px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 6px;
+    margin-top: 6px;
+    overflow: visible;
+  }
+  .countdown-bar-fill {
+    height: 100%;
+    border-radius: 6px;
+    background: linear-gradient(90deg, var(--blue-light), var(--blue-dark));
+    transition: width 0.5s ease, background 0.5s ease;
+    min-width: 0;
+  }
+  .countdown-bar-icon {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    transform: translate(-50%, -50%);
+    line-height: 1;
+    transition: left 0.5s ease;
+    pointer-events: none;
+  }
+  .countdown-bar-mountain {
+    font-size: 32px;
+    filter: drop-shadow(0 1px 3px rgba(0,0,0,0.3));
+  }
+  .countdown-bar-skier {
+    position: absolute;
+    font-size: 16px;
+    bottom: -2px;
+    right: -8px;
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
+  }
 
   /* ── Toolbar ── */
   .toolbar {
@@ -943,6 +985,13 @@
     background: var(--blue-dark);
     color: #fff;
     border-color: var(--blue-dark);
+  }
+  .filter-pill.dragging {
+    opacity: 0.5;
+    transform: scale(0.95);
+  }
+  .filter-pill.drag-over {
+    box-shadow: 0 0 0 2px var(--blue-dark);
   }
 
   /* ── View Toggles ── */
@@ -2219,10 +2268,19 @@
     <span id="stat-todo" class="u-text-success">0/0 tasks</span>
   </div>
   <div class="countdown-banner" id="countdownBanner">
-    <span>🗓️</span>
-    <span class="countdown-days" id="countdownDays">0</span>
-    <span class="countdown-label" id="countdownLabel">days until trip</span>
-    <button class="edit-date-btn" onclick="openDatePicker()" title="Change departure date">✏️</button>
+    <div class="countdown-text-row">
+      <span>🗓️</span>
+      <span class="countdown-days" id="countdownDays">0</span>
+      <span class="countdown-label" id="countdownLabel">days until trip</span>
+      <button class="edit-date-btn" onclick="openDatePicker()" title="Change departure date">✏️</button>
+    </div>
+    <div class="countdown-bar">
+      <div class="countdown-bar-fill" id="countdownFill"></div>
+      <div class="countdown-bar-icon" id="countdownIcon">
+        <span class="countdown-bar-mountain" id="countdownMountain">🏔️</span>
+        <span class="countdown-bar-skier">⛷️</span>
+      </div>
+    </div>
   </div>
   <nav class="mode-tabs" aria-label="View mode">
     <button class="mode-tab active" id="tabPacking" onclick="switchMode('packing')" aria-pressed="true">📦 Packing List</button>
@@ -3227,6 +3285,7 @@ function updateTripMetadata() {
 db.ref('trips').on('value', (snapshot) => {
   trips = snapshot.val() || {};
   if (currentView === 'home') renderTripGrid();
+  if (currentView === 'trip') updateCountdown();
 });
 
 // ══════════════════════════════════════════
@@ -3502,7 +3561,6 @@ function renderCategoryDashboard(allItems, filteredItems) {
     const catItems = filteredItems.filter(([, it]) => it.category === cat.name);
     const allCatItems = allItems.filter(([, it]) => it.category === cat.name);
     const totalInCat = allCatItems.length;
-    if (totalInCat === 0 && catItems.length === 0) continue;
     const packedInCat = allCatItems.filter(([, it]) => it.packed).length;
     const pct = totalInCat > 0 ? Math.round((packedInCat / totalInCat) * 100) : 0;
     const isPackable = cat.isPackable !== false;
@@ -3510,7 +3568,9 @@ function renderCategoryDashboard(allItems, filteredItems) {
 
     // Determine the count label based on category type
     let countLabel;
-    if (!isPackable) {
+    if (totalInCat === 0) {
+      countLabel = '0 items';
+    } else if (!isPackable) {
       countLabel = `${totalInCat} ideas`;
     } else if (isToDo) {
       countLabel = `${packedInCat} of ${totalInCat} completed`;
@@ -4120,9 +4180,18 @@ function rebuildFilterPills() {
   let html = '<button class="filter-pill' + (currentFilter === 'all' ? ' active' : '') + '" onclick="filterCategory(\'all\', this)">All Categories</button>';
   for (const cat of CATEGORIES) {
     const active = currentFilter === cat.name ? ' active' : '';
-    html += `<button class="filter-pill${active}" onclick="filterCategory('${cat.name.replace(/'/g,"\\'")}', this)">${cat.icon} ${cat.name}</button>`;
+    html += `<button class="filter-pill${active}" draggable="true" data-category="${cat.name}" onclick="filterCategory('${cat.name.replace(/'/g,"\\'")}', this)">${cat.icon} ${cat.name}</button>`;
   }
   bar.innerHTML = html;
+
+  // Attach drag-and-drop handlers to category pills (not "All Categories")
+  bar.querySelectorAll('.filter-pill[data-category]').forEach(pill => {
+    pill.addEventListener('dragstart', handlePillDragStart);
+    pill.addEventListener('dragover', handlePillDragOver);
+    pill.addEventListener('dragleave', handlePillDragLeave);
+    pill.addEventListener('drop', handlePillDrop);
+    pill.addEventListener('dragend', handlePillDragEnd);
+  });
 }
 
 function openAddModal() {
@@ -5222,6 +5291,66 @@ function reorderCategoriesArray() {
 // ══════════════════════════════════════════
 // Category Card Drag-and-Drop (Dashboard)
 // ══════════════════════════════════════════
+// ── Filter Pill Drag-and-Drop ──
+let pillDraggedEl = null;
+
+function handlePillDragStart(e) {
+  pillDraggedEl = e.target.closest('.filter-pill');
+  setTimeout(() => pillDraggedEl?.classList.add('dragging'), 0);
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', '');
+}
+
+function handlePillDragOver(e) {
+  e.preventDefault();
+  const pill = e.target.closest('.filter-pill[data-category]');
+  if (pill && pill !== pillDraggedEl) {
+    document.querySelectorAll('.filter-pill.drag-over').forEach(el => el.classList.remove('drag-over'));
+    pill.classList.add('drag-over');
+  }
+}
+
+function handlePillDragLeave(e) {
+  const pill = e.target.closest('.filter-pill');
+  if (pill) pill.classList.remove('drag-over');
+}
+
+function handlePillDrop(e) {
+  e.preventDefault();
+  const targetPill = e.target.closest('.filter-pill[data-category]');
+  if (!pillDraggedEl || !targetPill || pillDraggedEl === targetPill) return;
+
+  const bar = document.querySelector('.filter-bar');
+  const pills = Array.from(bar.querySelectorAll('.filter-pill[data-category]'));
+  const draggedIdx = pills.indexOf(pillDraggedEl);
+  const targetIdx = pills.indexOf(targetPill);
+
+  if (draggedIdx < targetIdx) {
+    targetPill.after(pillDraggedEl);
+  } else {
+    targetPill.before(pillDraggedEl);
+  }
+
+  const newOrder = Array.from(bar.querySelectorAll('.filter-pill[data-category]')).map(p => p.dataset.category);
+  const refs = getCurrentTripRefs();
+  if (refs) {
+    fbOperation(refs.state.child('categoryOrder').set(newOrder), { successMsg: 'Category order saved', silent: false })
+      .then(() => {
+        categoryOrder = newOrder;
+        reorderCategoriesArray();
+      });
+  }
+
+  document.querySelectorAll('.filter-pill.drag-over').forEach(el => el.classList.remove('drag-over'));
+}
+
+function handlePillDragEnd() {
+  pillDraggedEl?.classList.remove('dragging');
+  pillDraggedEl = null;
+  document.querySelectorAll('.filter-pill.drag-over').forEach(el => el.classList.remove('drag-over'));
+}
+
+// ── Category Card Drag-and-Drop ──
 let catCardDraggedEl = null;
 let catCardJustDragged = false;
 
@@ -5392,6 +5521,8 @@ function updateCountdown() {
   const banner = document.getElementById('countdownBanner');
   const daysEl = document.getElementById('countdownDays');
   const labelEl = document.getElementById('countdownLabel');
+  const fillEl = document.getElementById('countdownFill');
+  const iconEl = document.getElementById('countdownIcon');
   if (!banner || !daysEl || !labelEl) return;
 
   const trip = trips[currentTripId];
@@ -5429,6 +5560,44 @@ function updateCountdown() {
     daysEl.textContent = Math.abs(diffDays);
     labelEl.textContent = 'days since trip started';
     banner.classList.add('past');
+  }
+
+  // Update progress bar
+  if (fillEl && iconEl) {
+    const maxDays = 30;
+    let pct;
+    let fillColor;
+
+    if (diffDays <= 0) {
+      // Trip day or past
+      pct = 100;
+      fillColor = diffDays === 0
+        ? 'linear-gradient(90deg, #43a047, #2e7d32)'
+        : 'linear-gradient(90deg, #c62828, #b71c1c)';
+    } else if (diffDays >= maxDays) {
+      // Far out — show a small sliver so icon is visible
+      pct = 5;
+      fillColor = 'linear-gradient(90deg, var(--blue-light), var(--blue-dark))';
+    } else {
+      // Normal countdown: closer = more filled
+      pct = Math.round(((maxDays - diffDays) / maxDays) * 100);
+      pct = Math.max(pct, 5); // minimum 5% so icon shows
+
+      // Transition from blue (far) to green (close)
+      if (diffDays <= 3) {
+        fillColor = 'linear-gradient(90deg, #43a047, #2e7d32)';
+      } else if (diffDays <= 7) {
+        fillColor = 'linear-gradient(90deg, var(--blue-light), #43a047)';
+      } else {
+        fillColor = 'linear-gradient(90deg, var(--blue-light), var(--blue-dark))';
+      }
+    }
+
+    fillEl.style.width = pct + '%';
+    fillEl.style.background = fillColor;
+    iconEl.style.left = pct + '%';
+    const mountainEl = document.getElementById('countdownMountain');
+    if (mountainEl) mountainEl.textContent = trip.icon || '🏔️';
   }
 }
 
@@ -5675,9 +5844,6 @@ function showTripView(tripId) {
   document.getElementById('headerTitleText').textContent = trip.name || 'Trip';
   document.getElementById('headerIcon').textContent = trip.icon || '🧳';
 
-  // Update countdown banner
-  updateCountdown();
-
   // Reset filters/mode
   currentFilter = 'all';
   viewUnpackedOnly = false;
@@ -5702,6 +5868,9 @@ function showTripView(tripId) {
   switchMode('packing');
 
   attachTripListeners(tripId);
+
+  // Update countdown banner (after attachTripListeners sets currentTripId)
+  updateCountdown();
 }
 
 // ══════════════════════════════════════════
