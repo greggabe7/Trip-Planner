@@ -1,5 +1,17 @@
 # Trip Planner App - Task Tracking
 
+## Session: Feb 6, 2026
+
+### Completed This Session
+
+- [x] **Feature**: Added visual countdown progress bar with mountain + skier icon that travels along the bar as trip approaches
+- [x] **Feature**: Bar color transitions from blue (far out) → blue-to-green (4-7 days) → green (1-3 days), with red for past trips
+- [x] **Bug Fix**: Fixed countdown banner not appearing on initial trip load (updateCountdown was called before currentTripId was set by attachTripListeners)
+- [x] **Bug Fix**: Added updateCountdown() call in Firebase trips listener so banner updates when trip data arrives asynchronously
+- [x] **Feature**: Added "Done" filter toggle for To Do list — hides completed tasks when active, styled like packed/unpacked toggles
+
+---
+
 ## Session: Feb 4, 2026
 
 ### Completed This Session

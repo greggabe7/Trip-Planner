@@ -2503,6 +2503,9 @@
   <div class="view-toggle" id="togglePacked" onclick="toggleViewFilter('packed', this)" role="switch" aria-checked="false" tabindex="0" aria-label="Show packed only">
     <span class="toggle-dot" aria-hidden="true"></span> Packed
   </div>
+  <div class="view-toggle" id="toggleDone" onclick="toggleViewFilter('done', this)" role="switch" aria-checked="false" tabindex="0" aria-label="Hide done tasks">
+    <span class="toggle-dot" aria-hidden="true"></span> Done
+  </div>
   <div class="view-toggle" id="toggleAllItems" onclick="toggleViewFilter('allitems', this)" role="switch" aria-checked="false" tabindex="0" aria-label="Show all items">
     <span class="toggle-dot" aria-hidden="true"></span> 📝 Full List
   </div>
@@ -3157,6 +3160,7 @@ let viewUnpackedOnly = false;
 let viewPackedOnly = false;
 let viewShoppingOnly = false;
 let viewToDoOnly = false;
+let viewHideDone = false;
 let personFilterValue = '';
 let searchQuery = '';
 let currentMode = 'packing';
@@ -3305,7 +3309,7 @@ function getFilteredItems() {
     if (viewAllItems) {
       // no category exclusions
     } else if (viewToDoOnly) {
-      return list.filter(([, it]) => it.category === 'To Do' && !it.packed);
+      list = list.filter(([, it]) => it.category === 'To Do');
     } else if (currentFilter !== 'To Do') {
       // Exclude To Do items from normal packing views
       list = list.filter(([, it]) => it.category !== 'To Do');
@@ -3330,6 +3334,14 @@ function getFilteredItems() {
   // Packed only
   if (viewPackedOnly) {
     list = list.filter(([, it]) => it.packed);
+  }
+
+  // Hide done To Do items
+  if (viewHideDone) {
+    list = list.filter(([, it]) => {
+      if (it.category === 'To Do') return !it.packed;
+      return true;
+    });
   }
 
   // Shopping list only
@@ -3359,6 +3371,13 @@ function toggleViewFilter(which, btn) {
     if (viewPackedOnly) viewUnpackedOnly = false; // Turn off unpacked if turning on packed
     btn.classList.toggle('active', viewPackedOnly);
     document.getElementById('toggleUnpacked')?.classList.remove('active');
+    renderCurrentMode();
+    return;
+  }
+
+  if (which === 'done') {
+    viewHideDone = !viewHideDone;
+    btn.classList.toggle('active', viewHideDone);
     renderCurrentMode();
     return;
   }

@@ -1,5 +1,49 @@
 # Lessons Learned
 
+## Session: Feb 6, 2026
+
+### Function Call Ordering with Firebase Listeners
+**Problem**: `updateCountdown()` was called in `showTripView()` before `attachTripListeners()`, but `attachTripListeners()` is what sets `currentTripId`. So `trips[currentTripId]` resolved to `trips[null]` → undefined → banner hidden.
+
+**Root Cause**: `showHomeScreen()` sets `currentTripId = null`. When navigating to a trip, the call order was:
+1. `updateCountdown()` — runs with `currentTripId = null` → hides banner
+2. `attachTripListeners(tripId)` — sets `currentTripId = tripId` (too late)
+
+**Fix**: Move `updateCountdown()` to after `attachTripListeners(tripId)`.
+
+**Rule**: When a function depends on global state set by another function, always verify the call order. Don't assume the state is already set.
+
+---
+
+### Firebase Async Data + UI Rendering Race Conditions
+**Problem**: Firebase `on('value')` listeners fire asynchronously. UI rendering code that depends on Firebase data may run before the data arrives.
+
+**Fix**: Call UI update functions both:
+1. In the initial render path (optimistic, in case data is cached)
+2. In the Firebase listener callback (ensures update when data arrives)
+
+```javascript
+db.ref('trips').on('value', (snapshot) => {
+  trips = snapshot.val() || {};
+  if (currentView === 'trip') updateCountdown(); // Re-trigger when data arrives
+});
+```
+
+**Rule**: For Firebase-backed UI, always hook UI updates into both the initial render AND the data listener.
+
+---
+
+### Browser Caching with Local Dev Server
+**Problem**: Python `http.server` doesn't set cache-busting headers. After editing files, the browser may serve stale JS/CSS.
+
+**Symptoms**: Code changes confirmed in the file but not reflected in browser behavior. Manual JS calls work but automatic calls don't.
+
+**Fix**: Use cache-busting query params (`?v=2`), hard refresh (Cmd+Shift+R), or `location.reload(true)`.
+
+**Rule**: When debugging "code not working" on a local server, always rule out browser caching first.
+
+---
+
 ## Session: Feb 4, 2026
 
 ### HTML5 Drag-and-Drop Click Prevention
@@ -59,6 +103,36 @@ card.addEventListener('dragstart', handleDragStart);
 **Example**: Category reordering was first implemented in a settings modal, but user wanted to drag the category cards directly on the dashboard.
 
 **Rule**: When possible, let users manipulate items directly in context rather than through separate UI.
+
+---
+
+### Layered vs View Filters
+**Pattern**: The app has two kinds of filters:
+1. **View filters** (mutually exclusive): To Do, Shopping, Full List — these change *what* items you see
+2. **Layered filters** (independent): Unpacked, Packed, Done — these filter *within* the current view
+
+**Key Insight**: When a view filter (like To Do) hard-codes filtering logic (e.g., always hiding done items), it removes the ability to layer additional filters on top. Better to show all items in the view by default and let layered filters handle the narrowing.
+
+**Before**: `return list.filter(([, it]) => it.category === 'To Do' && !it.packed)` — no way to see done items
+**After**: `list = list.filter(([, it]) => it.category === 'To Do')` — Done toggle controls visibility
+
+**Rule**: Keep view filters responsible only for selecting the item set. Let layered toggle filters handle show/hide of subsets within that view.
+
+---
+
+### Category-Scoped Filters
+**Pattern**: When a filter only applies to a specific category (like "Done" for To Do items), scope the filter logic to that category so it doesn't affect unrelated items:
+
+```javascript
+if (viewHideDone) {
+  list = list.filter(([, it]) => {
+    if (it.category === 'To Do') return !it.packed;
+    return true; // Don't filter non-To Do items
+  });
+}
+```
+
+**Rule**: Scope category-specific filters so they don't have side effects on other categories.
 
 ---
 
