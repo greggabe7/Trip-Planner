@@ -2436,6 +2436,10 @@
       <div class="si-title">📂 Reorder Categories</div>
       <div class="si-desc">Drag to change category display order</div>
     </div>
+    <div class="settings-item" id="restoreCategoriesItem" style="display:none;" onclick="closeSettings(); openRestoreCategories();">
+      <div class="si-title">♻️ Restore Categories</div>
+      <div class="si-desc">Bring back deleted default categories</div>
+    </div>
     <div class="settings-item" onclick="exportToPDF();">
       <div class="si-title">📄 Export to PDF</div>
       <div class="si-desc">Print or save as PDF checklist</div>
@@ -2458,6 +2462,20 @@
     <div class="category-reorder-footer">
       <button class="u-btn u-btn-cancel" onclick="closeCategoryReorder()">Cancel</button>
       <button class="u-btn u-btn-primary" onclick="saveCategoryOrder()">Save Order</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Restore Categories Overlay ── -->
+<div class="category-reorder-overlay" id="restoreCategoriesOverlay" onclick="closeRestoreCategories(event)">
+  <div class="category-reorder-panel" onclick="event.stopPropagation()">
+    <div class="category-reorder-header">
+      <h3>Restore Categories</h3>
+      <button onclick="closeRestoreCategories()">✕</button>
+    </div>
+    <div class="category-reorder-list" id="restoreCategoriesList"></div>
+    <div class="category-reorder-footer">
+      <button class="u-btn u-btn-cancel" onclick="closeRestoreCategories()">Done</button>
     </div>
   </div>
 </div>
@@ -3143,6 +3161,7 @@ const DEFAULT_CATEGORIES = [
   { name: 'To Do', icon: '✅', requiresAssignment: false }
 ];
 let CATEGORIES = [...DEFAULT_CATEGORIES];
+let hiddenCategories = [];
 
 const ITEM_CATEGORY_MAP = {
   // Refrigerated Foods
@@ -3321,11 +3340,33 @@ function attachTripListeners(tripId) {
   });
   activeListeners.push({ ref: refs.state.child('categoryOrder'), event: 'value', cb: orderCb });
 
+  // Hidden categories listener
+  hiddenCategories = [];
+  const hiddenCb = refs.state.child('hiddenCategories').on('value', (snapshot) => {
+    hiddenCategories = snapshot.val() || [];
+    // Re-filter CATEGORIES: remove hidden defaults, restore unhidden ones
+    CATEGORIES = CATEGORIES.filter(c => {
+      const isDefault = DEFAULT_CATEGORIES.some(d => d.name === c.name);
+      return !isDefault || !hiddenCategories.includes(c.name);
+    });
+    DEFAULT_CATEGORIES.forEach(dc => {
+      if (!hiddenCategories.includes(dc.name) && !CATEGORIES.some(c => c.name === dc.name)) {
+        CATEGORIES.push({...dc});
+      }
+    });
+    reorderCategoriesArray();
+    rebuildCategoryDropdowns();
+    rebuildFilterPills();
+    renderCurrentMode();
+    updateRestoreCategoriesVisibility();
+  });
+  activeListeners.push({ ref: refs.state.child('hiddenCategories'), event: 'value', cb: hiddenCb });
+
   // Categories listener
-  CATEGORIES = [...DEFAULT_CATEGORIES];
+  CATEGORIES = DEFAULT_CATEGORIES.filter(c => !hiddenCategories.includes(c.name));
   customCategoryKeys = {};
   const catCb = refs.categories.on('value', (snapshot) => {
-    CATEGORIES = [...DEFAULT_CATEGORIES];
+    CATEGORIES = DEFAULT_CATEGORIES.filter(c => !hiddenCategories.includes(c.name));
     customCategoryKeys = {};
     const custom = snapshot.val();
     if (custom) {
@@ -4562,9 +4603,8 @@ function openEditCategoryModal(categoryName) {
   }
   renderEmojiPicker(selectedEmoji);
 
-  // Show delete only for custom (non-default) categories
-  const isDefault = DEFAULT_CATEGORIES.some(d => d.name === categoryName);
-  document.getElementById('newCatDeleteBtn').style.display = isDefault ? 'none' : 'block';
+  // Show delete for all categories except Miscellaneous (fallback target)
+  document.getElementById('newCatDeleteBtn').style.display = categoryName === 'Miscellaneous' ? 'none' : 'block';
 
   document.getElementById('newCatOverlay').classList.add('open');
   setTimeout(() => document.getElementById('newCatName').focus(), 200);
@@ -4694,8 +4734,8 @@ function closeConfirm() {
 function deleteCategory() {
   if (!editingCategoryName) return;
   const catName = editingCategoryName;
+  if (catName === 'Miscellaneous') return;
   const isDefault = DEFAULT_CATEGORIES.some(d => d.name === catName);
-  if (isDefault) { showToast('Cannot delete a default category'); return; }
 
   // Count affected items
   const affectedCount = Object.values(items).filter(it => it.category === catName).length;
@@ -4716,10 +4756,16 @@ function deleteCategory() {
       fbOperation(refs.items.update(updates), { silent: true });
     }
 
-    // Remove from Firebase categories
-    const key = customCategoryKeys[catName];
-    if (key) {
-      fbOperation(refs.categories.child(key).remove(), { successMsg: `"${catName}" deleted` });
+    if (isDefault) {
+      // Hide default category by adding to hiddenCategories list
+      const updated = [...hiddenCategories, catName];
+      fbOperation(refs.state.child('hiddenCategories').set(updated), { silent: true });
+    } else {
+      // Remove custom category from Firebase
+      const key = customCategoryKeys[catName];
+      if (key) {
+        fbOperation(refs.categories.child(key).remove(), { silent: true });
+      }
     }
 
     // Clean up categoryOrder
@@ -5499,6 +5545,7 @@ function openSettings() {
   } else if (dateInput) {
     dateInput.value = '';
   }
+  updateRestoreCategoriesVisibility();
   document.getElementById('settingsOverlay').classList.add('open');
 }
 
@@ -5541,6 +5588,53 @@ function openCategoryReorder() {
 function closeCategoryReorder(e) {
   if (e && e.target !== e.currentTarget) return;
   document.getElementById('categoryReorderOverlay').classList.remove('open');
+}
+
+// ══════════════════════════════════════════
+// Restore Deleted Categories
+// ══════════════════════════════════════════
+function updateRestoreCategoriesVisibility() {
+  const el = document.getElementById('restoreCategoriesItem');
+  if (el) el.style.display = hiddenCategories.length > 0 ? '' : 'none';
+}
+
+function openRestoreCategories() {
+  const list = document.getElementById('restoreCategoriesList');
+  list.innerHTML = '';
+  hiddenCategories.forEach(name => {
+    const dc = DEFAULT_CATEGORIES.find(d => d.name === name);
+    if (!dc) return;
+    const item = document.createElement('div');
+    item.className = 'category-reorder-item';
+    item.style.cursor = 'default';
+    item.innerHTML = `
+      <span class="category-reorder-icon">${dc.icon}</span>
+      <span class="category-reorder-name">${dc.name}</span>
+      <button class="u-btn u-btn-primary" style="padding:6px 14px;font-size:13px;" onclick="restoreCategory('${dc.name.replace(/'/g, "\\'")}')">Restore</button>
+    `;
+    list.appendChild(item);
+  });
+  document.getElementById('restoreCategoriesOverlay').classList.add('open');
+}
+
+function closeRestoreCategories(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('restoreCategoriesOverlay').classList.remove('open');
+}
+
+function restoreCategory(name) {
+  const refs = getCurrentTripRefs();
+  if (!refs) return;
+  const updated = hiddenCategories.filter(n => n !== name);
+  fbOperation(refs.state.child('hiddenCategories').set(updated.length > 0 ? updated : null), { silent: true });
+  showToast(`"${name}" restored`);
+  // Re-render the restore list
+  if (updated.length === 0) {
+    closeRestoreCategories();
+  } else {
+    // Wait for listener to update, then re-render
+    setTimeout(() => openRestoreCategories(), 300);
+  }
 }
 
 function handleCatReorderDragStart(e) {
