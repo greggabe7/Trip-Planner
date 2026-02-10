@@ -1487,6 +1487,49 @@
     display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 14px;
   }
   .new-cat-modal .toggle-row input { width: 18px; height: 18px; }
+  .new-cat-modal .icon-input { width: 60px; }
+
+  /* Emoji picker grid */
+  .emoji-picker { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; margin-bottom: 4px; }
+  .emoji-option {
+    width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+    font-size: 22px; border-radius: 8px; border: 2px solid transparent; cursor: pointer;
+    background: var(--snow-gray); transition: border-color .15s, background .15s;
+  }
+  .emoji-option:hover { background: #e0e7f0; }
+  .emoji-option.selected { border-color: var(--blue-mid); background: #dbeafe; }
+  .emoji-custom-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  .emoji-custom-row span { font-size: 13px; color: var(--gray-text); white-space: nowrap; }
+  .emoji-custom-row input { width: 60px; padding: 6px 8px; border: 1px solid var(--snow-gray); border-radius: 8px; font-size: 18px; text-align: center; }
+
+  /* Keywords input */
+  .new-cat-modal .keywords-input {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--snow-gray); border-radius: 8px; font-size: 14px; font-family: inherit;
+  }
+  .new-cat-modal .field-hint { font-size: 11px; color: var(--gray-text); margin-top: 2px; }
+
+  /* Delete button */
+  .btn-danger {
+    background: #dc2626; color: #fff; border: none; padding: 10px 18px; border-radius: 8px;
+    font-size: 15px; font-weight: 600; cursor: pointer; width: 100%; margin-top: 12px;
+  }
+  .btn-danger:hover { background: #b91c1c; }
+
+  /* Confirmation overlay */
+  .confirm-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 220;
+    align-items: center; justify-content: center;
+  }
+  .confirm-overlay.open { display: flex; }
+  .confirm-modal {
+    background: #fff; width: 85%; max-width: 340px; border-radius: var(--radius);
+    padding: 20px; box-shadow: 0 8px 30px rgba(0,0,0,.3); text-align: center;
+    animation: slideUp .2s ease;
+  }
+  .confirm-modal h3 { font-size: 17px; color: var(--blue-dark); margin-bottom: 10px; }
+  .confirm-modal p { font-size: 14px; color: var(--gray-text); margin-bottom: 18px; }
+  .confirm-modal .modal-buttons { display: flex; gap: 10px; }
+  .confirm-modal .modal-buttons button { flex: 1; }
 
   /* ── Home Screen ── */
   .home-screen {
@@ -1760,6 +1803,11 @@
   .category-card-count { font-size: 12px; color: var(--gray-text, var(--gray-light)); margin-bottom: 8px; }
   .category-card-progress { height: 4px; background: var(--snow-gray); border-radius: 2px; overflow: hidden; }
   .category-card-progress-fill { height: 100%; background: var(--green-packed); transition: width .3s; }
+  .category-card-add {
+    border: 2px dashed var(--snow-gray); background: transparent; box-shadow: none;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .category-card-add:hover { border-color: var(--blue-mid); background: rgba(59,130,246,.04); }
 
   /* ── Grid View: Expanded Category ── */
   .category-expanded-header {
@@ -1784,6 +1832,12 @@
     font-size: 17px; font-weight: 600; color: var(--blue-dark);
   }
   .category-expanded-count { font-size: 13px; color: var(--gray-light); white-space: nowrap; }
+  .category-edit-btn {
+    background: none; border: none; font-size: 18px; cursor: pointer;
+    padding: 4px 6px; border-radius: 8px; opacity: .6; transition: opacity .15s;
+  }
+  .category-edit-btn:hover { opacity: 1; }
+  .category-edit-btn:active { background: var(--snow-gray); }
 
   /* ── Grid View: Item Cards ── */
   .items-grid {
@@ -2687,18 +2741,42 @@
 <!-- ── New Category Modal ── -->
 <div class="new-cat-overlay" id="newCatOverlay" onclick="closeNewCatModal(event)">
   <div class="new-cat-modal" onclick="event.stopPropagation()">
-    <h3>Add New Category</h3>
+    <h3 id="newCatTitle">Add New Category</h3>
     <label>Category Name</label>
     <input type="text" id="newCatName" placeholder="e.g. Cooking Supplies" autocomplete="off">
-    <label>Icon (emoji, optional)</label>
-    <input type="text" id="newCatIcon" placeholder="e.g. 🍳" maxlength="4" class="icon-input">
+    <label>Icon</label>
+    <div class="emoji-picker" id="emojiPicker"></div>
+    <div class="emoji-custom-row">
+      <span>or custom:</span>
+      <input type="text" id="newCatIcon" placeholder="🍳" maxlength="4">
+    </div>
+    <div class="toggle-row">
+      <input type="checkbox" id="newCatPackable" checked>
+      <span>Packable (shows progress bar)</span>
+    </div>
     <div class="toggle-row">
       <input type="checkbox" id="newCatAssign">
       <span>Requires family member assignment</span>
     </div>
+    <label>Auto-categorize keywords</label>
+    <input type="text" id="newCatKeywords" class="keywords-input" placeholder="e.g. ski, snowboard, goggles" autocomplete="off">
+    <div class="field-hint">Comma-separated. Items containing these words auto-assign to this category.</div>
     <div class="modal-buttons u-mt">
       <button class="btn-secondary" onclick="closeNewCatModal()">Cancel</button>
-      <button class="btn-primary" onclick="saveNewCategory()">Add Category</button>
+      <button class="btn-primary" id="newCatSaveBtn" onclick="saveNewCategory()">Add Category</button>
+    </div>
+    <button class="btn-danger" id="newCatDeleteBtn" style="display:none" onclick="deleteCategory()">Delete Category</button>
+  </div>
+</div>
+
+<!-- ── Confirm Dialog ── -->
+<div class="confirm-overlay" id="confirmOverlay" onclick="closeConfirm()">
+  <div class="confirm-modal" onclick="event.stopPropagation()">
+    <h3 id="confirmTitle">Confirm</h3>
+    <p id="confirmMessage">Are you sure?</p>
+    <div class="modal-buttons">
+      <button class="btn-secondary" onclick="closeConfirm()">Cancel</button>
+      <button class="btn-danger" id="confirmActionBtn" onclick="">Confirm</button>
     </div>
   </div>
 </div>
@@ -3147,6 +3225,11 @@ function autoCategorize(itemName) {
     if (pattern.test(lower)) return 'To Do';
   }
 
+  // Check custom keywords (user-defined, take priority)
+  for (const [keyword, category] of Object.entries(customKeywordMap)) {
+    if (lower.includes(keyword)) return category;
+  }
+
   for (const [keyword, category] of Object.entries(ITEM_CATEGORY_MAP)) {
     if (lower.includes(keyword)) return category;
   }
@@ -3240,16 +3323,31 @@ function attachTripListeners(tripId) {
 
   // Categories listener
   CATEGORIES = [...DEFAULT_CATEGORIES];
+  customCategoryKeys = {};
   const catCb = refs.categories.on('value', (snapshot) => {
     CATEGORIES = [...DEFAULT_CATEGORIES];
+    customCategoryKeys = {};
     const custom = snapshot.val();
     if (custom) {
-      Object.values(custom).forEach(c => {
-        if (!CATEGORIES.find(x => x.name === c.name)) {
-          CATEGORIES.push({ name: c.name, icon: c.icon || '📁', requiresAssignment: !!c.requiresAssignment });
+      Object.entries(custom).forEach(([key, c]) => {
+        customCategoryKeys[c.name] = key;
+        const existing = CATEGORIES.find(x => x.name === c.name);
+        if (existing) {
+          // Override default category properties with custom values
+          existing.icon = c.icon || existing.icon;
+          existing.requiresAssignment = !!c.requiresAssignment;
+          existing.isPackable = c.isPackable !== undefined ? c.isPackable : existing.isPackable;
+          existing.keywords = c.keywords || [];
+        } else {
+          CATEGORIES.push({
+            name: c.name, icon: c.icon || '📁', requiresAssignment: !!c.requiresAssignment,
+            isPackable: c.isPackable !== undefined ? c.isPackable : true,
+            keywords: c.keywords || []
+          });
         }
       });
     }
+    rebuildCustomKeywords();
     reorderCategoriesArray(); // Apply saved order
     rebuildCategoryDropdowns();
     rebuildFilterPills();
@@ -3607,11 +3705,17 @@ function renderCategoryDashboard(allItems, filteredItems) {
     </div>`;
   }
 
+  // Add "+" card for creating new categories
+  html += `<div class="category-card category-card-add" onclick="openNewCatModal('dashboard')">
+    <div class="category-card-icon" style="color:var(--gray-text);opacity:.5">＋</div>
+    <div class="category-card-name" style="color:var(--gray-text)">Add Category</div>
+  </div>`;
+
   html += '</div>';
   main.innerHTML = html;
 
-  // Attach drag-and-drop and click handlers to category cards
-  main.querySelectorAll('.category-card').forEach(card => {
+  // Attach drag-and-drop and click handlers to category cards (skip the "+" add card)
+  main.querySelectorAll('.category-card:not(.category-card-add)').forEach(card => {
     card.addEventListener('click', (e) => {
       // Only expand if we didn't just finish dragging
       if (!catCardJustDragged) {
@@ -3653,6 +3757,7 @@ function renderExpandedCategory(categoryName, allItems, filteredItems) {
       <button class="category-back-btn" onclick="collapseCategoryView()">←</button>
       <div class="category-expanded-title"><span>${cat.icon}</span><span>${cat.name}</span></div>
       <div class="category-expanded-count">${countLabel}</div>
+      <button class="category-edit-btn" onclick="event.stopPropagation();openEditCategoryModal('${cat.name.replace(/'/g,"\\'")}')">✏️</button>
     </div>`;
 
   if (cat.requiresAssignment) {
@@ -4383,12 +4488,84 @@ function toggleAssignment() {
 }
 
 // ══════════════════════════════════════════
-// New Category
+// New / Edit Category
 // ══════════════════════════════════════════
-function openNewCatModal() {
+const EMOJI_PRESETS = [
+  '📁','📦','👕','🧴','🍽️','🧊','🥶','🥫','🏠','🎮','🐕','✅',
+  '🎿','⛷️','🏔️','🧤','🧣','🎒','💊','📷','🔧','🚗','🎵','📚',
+  '🍳','☀️','🧸','🎁','🏖️','⚽'
+];
+let selectedEmoji = '';
+let newCatSource = 'dropdown'; // 'dropdown' or 'dashboard'
+let editingCategoryKey = null;
+let editingCategoryName = null;
+let customCategoryKeys = {}; // { categoryName: firebaseKey }
+let customKeywordMap = {}; // { keyword: categoryName }
+
+function renderEmojiPicker(selected) {
+  const picker = document.getElementById('emojiPicker');
+  picker.innerHTML = EMOJI_PRESETS.map((e, i) =>
+    `<div class="emoji-option${e === selected ? ' selected' : ''}" data-idx="${i}">${e}</div>`
+  ).join('');
+  picker.onclick = (ev) => {
+    const el = ev.target.closest('.emoji-option');
+    if (!el) return;
+    selectEmoji(EMOJI_PRESETS[parseInt(el.dataset.idx)]);
+  };
+}
+
+function selectEmoji(emoji) {
+  selectedEmoji = emoji;
+  document.getElementById('newCatIcon').value = '';
+  renderEmojiPicker(emoji);
+}
+
+function openNewCatModal(source) {
+  newCatSource = source || 'dropdown';
+  editingCategoryKey = null;
+  editingCategoryName = null;
+  document.getElementById('newCatTitle').textContent = 'Add New Category';
+  document.getElementById('newCatSaveBtn').textContent = 'Add Category';
+  document.getElementById('newCatDeleteBtn').style.display = 'none';
   document.getElementById('newCatName').value = '';
   document.getElementById('newCatIcon').value = '';
+  document.getElementById('newCatPackable').checked = true;
   document.getElementById('newCatAssign').checked = false;
+  document.getElementById('newCatKeywords').value = '';
+  selectedEmoji = '';
+  renderEmojiPicker('');
+  document.getElementById('newCatOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('newCatName').focus(), 200);
+}
+
+function openEditCategoryModal(categoryName) {
+  const cat = CATEGORIES.find(c => c.name === categoryName);
+  if (!cat) return;
+  newCatSource = 'edit';
+  editingCategoryName = categoryName;
+  editingCategoryKey = customCategoryKeys[categoryName] || null;
+
+  document.getElementById('newCatTitle').textContent = 'Edit Category';
+  document.getElementById('newCatSaveBtn').textContent = 'Save Changes';
+  document.getElementById('newCatName').value = cat.name;
+  document.getElementById('newCatPackable').checked = cat.isPackable !== false;
+  document.getElementById('newCatAssign').checked = !!cat.requiresAssignment;
+  document.getElementById('newCatKeywords').value = (cat.keywords || []).join(', ');
+
+  // Set emoji
+  selectedEmoji = '';
+  document.getElementById('newCatIcon').value = '';
+  if (EMOJI_PRESETS.includes(cat.icon)) {
+    selectedEmoji = cat.icon;
+  } else {
+    document.getElementById('newCatIcon').value = cat.icon;
+  }
+  renderEmojiPicker(selectedEmoji);
+
+  // Show delete only for custom (non-default) categories
+  const isDefault = DEFAULT_CATEGORIES.some(d => d.name === categoryName);
+  document.getElementById('newCatDeleteBtn').style.display = isDefault ? 'none' : 'block';
+
   document.getElementById('newCatOverlay').classList.add('open');
   setTimeout(() => document.getElementById('newCatName').focus(), 200);
 }
@@ -4396,38 +4573,182 @@ function openNewCatModal() {
 function closeNewCatModal(e) {
   if (e && e.target !== e.currentTarget) return;
   document.getElementById('newCatOverlay').classList.remove('open');
-  // Reset category dropdown to previous value if it was __new__
-  const sel = document.getElementById('itemCategory');
-  if (sel && sel.value === '__new__') sel.value = 'Miscellaneous';
+  editingCategoryKey = null;
+  editingCategoryName = null;
+  // Reset category dropdown to previous value if it was __new__ (only from dropdown source)
+  if (newCatSource === 'dropdown') {
+    const sel = document.getElementById('itemCategory');
+    if (sel && sel.value === '__new__') sel.value = 'Miscellaneous';
+  }
 }
 
 function saveNewCategory() {
   const name = document.getElementById('newCatName').value.trim();
   if (!name) { document.getElementById('newCatName').focus(); return; }
-  if (CATEGORIES.find(c => c.name.toLowerCase() === name.toLowerCase())) {
+
+  const isEditing = !!editingCategoryName;
+  // Duplicate check (exclude self when editing)
+  const duplicate = CATEGORIES.find(c => c.name.toLowerCase() === name.toLowerCase() && (!isEditing || c.name !== editingCategoryName));
+  if (duplicate) {
     showToast('Category already exists');
     return;
   }
-  const icon = document.getElementById('newCatIcon').value.trim() || '📁';
-  const requiresAssignment = document.getElementById('newCatAssign').checked;
 
-  const newCat = { name, icon, requiresAssignment };
+  const customIcon = document.getElementById('newCatIcon').value.trim();
+  const icon = customIcon || selectedEmoji || '📁';
+  const requiresAssignment = document.getElementById('newCatAssign').checked;
+  const isPackable = document.getElementById('newCatPackable').checked;
+  const keywordsRaw = document.getElementById('newCatKeywords').value.trim();
+  const keywords = keywordsRaw ? keywordsRaw.split(',').map(k => k.trim().toLowerCase()).filter(Boolean) : [];
+
+  const catData = { name, icon, requiresAssignment, isPackable, keywords };
   const refs = getCurrentTripRefs();
-  if (refs) {
-    fbOperation(refs.categories.push(newCat), { successMsg: 'Category added' });
+
+  if (isEditing) {
+    // Edit mode
+    const isDefault = DEFAULT_CATEGORIES.some(d => d.name === editingCategoryName);
+    if (editingCategoryKey) {
+      // Update existing custom category
+      if (refs) fbOperation(refs.categories.child(editingCategoryKey).set(catData), { successMsg: 'Category updated' });
+    } else {
+      // Creating a custom override for a default category, or new custom entry
+      if (refs) {
+        const newRef = refs.categories.push(catData);
+        editingCategoryKey = newRef.key;
+      }
+    }
+
+    // Rename items if name changed
+    if (editingCategoryName !== name && refs) {
+      renameItemsCategory(editingCategoryName, name, refs);
+      // Update categoryOrder
+      const idx = categoryOrder.indexOf(editingCategoryName);
+      if (idx !== -1) {
+        categoryOrder[idx] = name;
+        fbOperation(refs.state.child('categoryOrder').set(categoryOrder), { silent: true });
+      }
+      // Update drilldown if viewing this category
+      if (categoryDrillDownMode === editingCategoryName) {
+        categoryDrillDownMode = name;
+        currentFilter = name;
+      }
+    }
+
+    showToast(`Category "${name}" updated`);
+  } else {
+    // Add mode
+    if (refs) fbOperation(refs.categories.push(catData), { successMsg: 'Category added' });
+    showToast(`Category "${name}" added`);
   }
-  CATEGORIES.push(newCat);
 
   closeNewCatModal();
+  // Force re-render (Firebase listener will also trigger, but ensure immediate UI update)
+  if (!isEditing) {
+    CATEGORIES.push(catData);
+  }
   rebuildCategoryDropdowns();
   rebuildFilterPills();
 
-  // Select the new category in the item modal
-  const sel = document.getElementById('itemCategory');
-  if (sel) sel.value = name;
-  toggleAssignment();
+  if (newCatSource === 'dropdown') {
+    // Select the new category in the item modal
+    const sel = document.getElementById('itemCategory');
+    if (sel) sel.value = name;
+    toggleAssignment();
+  } else {
+    renderItems();
+  }
+}
 
-  showToast(`Category "${name}" added`);
+function renameItemsCategory(oldName, newName, refs) {
+  const updates = {};
+  for (const [id, it] of Object.entries(items)) {
+    if (it.category === oldName) {
+      updates[`${id}/category`] = newName;
+    }
+  }
+  if (Object.keys(updates).length > 0 && refs) {
+    fbOperation(refs.items.update(updates), { silent: true });
+  }
+}
+
+// ── Confirm Dialog ──
+let confirmCallback = null;
+
+function showConfirm(title, message, onConfirm) {
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmMessage').textContent = message;
+  confirmCallback = onConfirm;
+  document.getElementById('confirmActionBtn').onclick = () => {
+    closeConfirm();
+    if (confirmCallback) confirmCallback();
+    confirmCallback = null;
+  };
+  document.getElementById('confirmOverlay').classList.add('open');
+}
+
+function closeConfirm() {
+  document.getElementById('confirmOverlay').classList.remove('open');
+  confirmCallback = null;
+}
+
+function deleteCategory() {
+  if (!editingCategoryName) return;
+  const catName = editingCategoryName;
+  const isDefault = DEFAULT_CATEGORIES.some(d => d.name === catName);
+  if (isDefault) { showToast('Cannot delete a default category'); return; }
+
+  // Count affected items
+  const affectedCount = Object.values(items).filter(it => it.category === catName).length;
+  const msg = affectedCount > 0
+    ? `Delete "${catName}"? ${affectedCount} item${affectedCount !== 1 ? 's' : ''} will be moved to Miscellaneous.`
+    : `Delete "${catName}"? This category has no items.`;
+
+  showConfirm('Delete Category', msg, () => {
+    const refs = getCurrentTripRefs();
+    if (!refs) return;
+
+    // Move items to Miscellaneous
+    if (affectedCount > 0) {
+      const updates = {};
+      for (const [id, it] of Object.entries(items)) {
+        if (it.category === catName) updates[`${id}/category`] = 'Miscellaneous';
+      }
+      fbOperation(refs.items.update(updates), { silent: true });
+    }
+
+    // Remove from Firebase categories
+    const key = customCategoryKeys[catName];
+    if (key) {
+      fbOperation(refs.categories.child(key).remove(), { successMsg: `"${catName}" deleted` });
+    }
+
+    // Clean up categoryOrder
+    const orderIdx = categoryOrder.indexOf(catName);
+    if (orderIdx !== -1) {
+      categoryOrder.splice(orderIdx, 1);
+      fbOperation(refs.state.child('categoryOrder').set(categoryOrder), { silent: true });
+    }
+
+    // If viewing deleted category, go back to dashboard
+    if (categoryDrillDownMode === catName) {
+      categoryDrillDownMode = null;
+      currentFilter = 'all';
+    }
+
+    closeNewCatModal();
+    showToast(`"${catName}" deleted`);
+  });
+}
+
+function rebuildCustomKeywords() {
+  customKeywordMap = {};
+  for (const cat of CATEGORIES) {
+    if (cat.keywords && cat.keywords.length > 0) {
+      for (const kw of cat.keywords) {
+        customKeywordMap[kw.toLowerCase()] = cat.name;
+      }
+    }
+  }
 }
 
 // ══════════════════════════════════════════
@@ -5415,7 +5736,7 @@ function handleCatCardDrop(e) {
   }
 
   // Save the new order to Firebase
-  const newOrder = Array.from(dashboard.querySelectorAll('.category-card')).map(c => c.dataset.category);
+  const newOrder = Array.from(dashboard.querySelectorAll('.category-card:not(.category-card-add)')).map(c => c.dataset.category);
   const refs = getCurrentTripRefs();
   if (refs) {
     fbOperation(refs.state.child('categoryOrder').set(newOrder), { successMsg: 'Category order saved', silent: false })

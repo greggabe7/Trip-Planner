@@ -1,5 +1,20 @@
 # Trip Planner App - Task Tracking
 
+## Session: Feb 9, 2026
+
+### Completed This Session
+
+- [x] **Feature**: Enhanced category modal — emoji picker grid (30 presets + custom input), isPackable toggle, keywords input
+- [x] **Feature**: "+" card on category dashboard for quick category creation
+- [x] **Feature**: Edit category support — edit button in expanded category header, pre-fills modal with existing values
+- [x] **Feature**: Delete category support — confirmation dialog, moves items to Miscellaneous, cleans up categoryOrder
+- [x] **Feature**: Custom auto-categorization keywords — stored in Firebase, checked before static keyword map
+- [x] **Bug Fix**: Firebase categories listener now round-trips `isPackable` and `keywords` properties
+- [x] **Bug Fix**: Default categories can be edited (saved as custom override), custom categories can be deleted
+- [x] **UX**: Rename propagates to all items and categoryOrder atomically
+
+---
+
 ## Session: Feb 6, 2026
 
 ### Completed This Session
@@ -40,6 +55,32 @@
 - [x] **Feature**: Added separate To Do task tracker with its own progress bar
 - [x] **UX**: To Do items use "completed" terminology instead of "packed"
 - [x] **UX**: Header stats show task count separately (X/Y tasks)
+
+---
+
+## Planned: Trip Templates + Category Picker
+
+### Overview
+Add named templates (e.g., "Mammoth Trip", "Hawaii Trip") and a category picker so new trips start with exactly the right categories. Uses `hiddenCategories` approach for backward compatibility — existing trips unaffected.
+
+### Steps
+- [ ] Add `templates` and `hiddenCategories` global state + Firebase listeners
+- [ ] Modify categories listener to filter defaults by `hiddenCategories`
+- [ ] Replace clone section in create-trip modal with "Start with..." radio group (All categories / From template / Choose categories / Clone existing trip)
+- [ ] Modify `openCreateTripModal()` to reset radio and sub-panels
+- [ ] Modify `saveTrip()` to branch on all four modes (all/template/pick/clone)
+- [ ] Implement `applyTemplate()`, `applyPickedCategories()`, `gatherAllUniqueCategories()`, `renderCategoryChecklist()`, `populateTemplateDropdown()`, `previewTemplate()`
+- [ ] Add "Save as Template" to trip settings menu (`saveAsTemplatePrompt()`)
+- [ ] Add "Manage Templates" to app settings with rename/delete support
+- [ ] Update `cloneTripData()` to also copy `hiddenCategories`
+- [ ] Hide "Start with..." section when modal is reused for Edit Trip
+- [ ] Clean up old clone checkbox/toggle code
+
+### Key Architecture
+- **Templates** stored at `templates/{id}/` in Firebase with full category list
+- **`hiddenCategories`** stored at `trips/{tripId}/appState/hiddenCategories` — array of default category names to suppress
+- **No migration needed** — new Firebase paths created on first use
+- **Full plan details**: `.claude/plans/hidden-roaming-ritchie.md`
 
 ---
 
