@@ -4719,9 +4719,9 @@ function showConfirm(title, message, onConfirm) {
   document.getElementById('confirmMessage').textContent = message;
   confirmCallback = onConfirm;
   document.getElementById('confirmActionBtn').onclick = () => {
+    const cb = confirmCallback;
     closeConfirm();
-    if (confirmCallback) confirmCallback();
-    confirmCallback = null;
+    if (cb) cb();
   };
   document.getElementById('confirmOverlay').classList.add('open');
 }
