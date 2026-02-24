@@ -199,6 +199,43 @@ if (item.category === 'Meal Ideas') { ... } // Hardcoded name
 
 ---
 
+### showConfirm Callback Race Condition
+**Problem**: `showConfirm()` had a bug where `closeConfirm()` nulled `confirmCallback` before the onclick handler invoked it. Every confirm dialog silently did nothing.
+
+**Root Cause**: The confirm button's onclick handler called `closeConfirm()` first (which sets `confirmCallback = null`), then checked `if (confirmCallback)` — always false.
+
+```javascript
+// Broken:
+closeConfirm();                        // sets confirmCallback = null
+if (confirmCallback) confirmCallback(); // always skipped
+
+// Fixed:
+const cb = confirmCallback;            // save reference first
+closeConfirm();                        // safe to null now
+if (cb) cb();                          // callback still accessible
+```
+
+**Rule**: When a cleanup function nulls a variable, always save the reference locally before calling cleanup. This pattern applies to any callback-then-cleanup sequence.
+
+---
+
+### Confirm Dialog Click Target Issues (Browser Automation)
+**Problem**: The confirm overlay div has `onclick="closeConfirm()"`. When clicking the Confirm button via browser automation, clicks that miss the button slightly hit the overlay instead, which calls `closeConfirm()` directly — closing the dialog without running the callback.
+
+**Rule**: Confirm dialog overlays that close on background click can swallow button clicks if coordinates are imprecise. Use element references (`ref_id`) or `element.click()` via JS for reliable confirm button clicks.
+
+---
+
+### Testing Against Live Firebase Data
+**Problem**: Testing delete/restore features against live Firebase data moved 13 Dog List items to Miscellaneous. After the test, data had to be manually restored.
+
+**Rule**: When testing destructive operations (delete, move, reset) against live Firebase data, plan for data restoration. Either:
+1. Note the affected items before testing so they can be moved back
+2. Use a test trip with disposable data
+3. Script the restore as part of the test
+
+---
+
 ### Testing Browser Changes
 **Process**: When making UI changes:
 1. Make the code change
