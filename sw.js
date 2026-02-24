@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mammoth-packer-v3';
+const CACHE_NAME = 'mammoth-packer-v4';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -8,7 +8,8 @@ const STATIC_ASSETS = [
 // External assets to cache (Firebase SDK)
 const CDN_ASSETS = [
   'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js',
-  'https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js'
+  'https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js',
+  'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js'
 ];
 
 // Install: cache all static + CDN assets

@@ -2805,6 +2805,7 @@
 <!-- ── Firebase SDK ── -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
 <script>
 // ══════════════════════════════════════════
@@ -2824,18 +2825,12 @@
 // DATABASE RULES (paste in Firebase Console > Realtime Database > Rules):
 // {
 //   "rules": {
-//     ".read": true,
-//     ".write": true
-//   }
-// }
-// NOTE: These rules allow open access. For production/family-only access,
-// set up Firebase Authentication and use rules like:
-// {
-//   "rules": {
 //     ".read": "auth != null",
 //     ".write": "auth != null"
 //   }
 // }
+// Anonymous auth is enabled — every client signs in invisibly and gets a UID.
+// These rules ensure only authenticated clients can read/write.
 // ══════════════════════════════════════════
 
 // ══════════════════════════════════════════
@@ -2857,10 +2852,13 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
+const auth = firebase.auth();
 
-// Enable offline persistence (Firebase RTDB caches data automatically)
-// We'll add a localStorage backup layer for extra safety
-db.goOnline(); // Ensure we start connected
+// Gate DB access behind auth — called after anonymous sign-in completes
+function initAfterAuth() {
+  db.goOnline();
+  loadOfflineQueue();
+}
 
 // ══════════════════════════════════════════
 // Offline Queue Management
@@ -2977,8 +2975,7 @@ function updatePendingBadge() {
   }
 }
 
-// Load queue on startup
-loadOfflineQueue();
+// loadOfflineQueue() is now called inside initAfterAuth() after anonymous sign-in
 
 // ══════════════════════════════════════════
 // LocalStorage Data Backup
@@ -3425,13 +3422,15 @@ function updateTripMetadata() {
 }
 
 // ══════════════════════════════════════════
-// Global trips listener
+// Global trips listener (attached after auth)
 // ══════════════════════════════════════════
-db.ref('trips').on('value', (snapshot) => {
-  trips = snapshot.val() || {};
-  if (currentView === 'home') renderTripGrid();
-  if (currentView === 'trip') updateCountdown();
-});
+function attachGlobalTripsListener() {
+  db.ref('trips').on('value', (snapshot) => {
+    trips = snapshot.val() || {};
+    if (currentView === 'home') renderTripGrid();
+    if (currentView === 'trip') updateCountdown();
+  });
+}
 
 // ══════════════════════════════════════════
 // Filtering
@@ -6693,20 +6692,26 @@ function hideLoadingScreen() {
   }
 }
 
-// Run migration then handle initial route
-migrateIfNeeded().then(migratedTripId => {
+// Boot sequence: anonymous auth → DB access → load app
+auth.signInAnonymously().then(() => {
+  console.log('Auth ready, uid:', auth.currentUser.uid);
+  initAfterAuth();
+  attachGlobalTripsListener();
+  return migrateIfNeeded();
+}).then(migratedTripId => {
   if (migratedTripId) {
     navigate('/trip/' + migratedTripId);
     hideLoadingScreen();
   } else {
-    // Wait for trips to load, then handle route
     db.ref('trips').once('value', () => {
       handleRouteChange();
       hideLoadingScreen();
     });
   }
-}).catch(() => {
-  // On error, still show the app
+}).catch(err => {
+  console.warn('Auth/boot error, loading with cache:', err);
+  initAfterAuth();
+  attachGlobalTripsListener();
   handleRouteChange();
   hideLoadingScreen();
 });
