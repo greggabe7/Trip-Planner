@@ -2418,7 +2418,7 @@
     </div>
     <div class="settings-item" onclick="resetForNextTrip()">
       <div class="si-title">🔄 Reset for Next Trip</div>
-      <div class="si-desc">Unpack all items. Saves a snapshot you can undo.</div>
+      <div class="si-desc">Uncheck all packed items &amp; to-dos. Nothing is deleted.</div>
     </div>
     <div class="settings-item" id="undoResetItem" style="display:none;" onclick="undoLastReset()">
       <div class="si-title">↩️ Undo Last Reset</div>
@@ -5268,28 +5268,37 @@ function resetAllPacked() {
 function resetForNextTrip() {
   const refs = getCurrentTripRefs();
   if (!refs) return;
-  const packedItems = Object.entries(items).filter(([, it]) => it.packed);
-  if (packedItems.length === 0) {
+  const allEntries = Object.entries(items);
+  const packedItems = allEntries.filter(([, it]) => it.packed && it.category !== 'To Do');
+  const doneTodos = allEntries.filter(([, it]) => it.packed && it.category === 'To Do');
+  const checkedItems = allEntries.filter(([, it]) => it.packed);
+  if (checkedItems.length === 0) {
     showToast('Nothing to reset');
     return;
   }
-  if (!confirm(`Reset for next trip?\n\nThis will unpack all ${packedItems.length} packed items.\nYou can undo this within 24 hours.`)) return;
+  const totalItems = allEntries.length;
+  let msg = 'Reset for next trip?\n\n';
+  if (packedItems.length > 0) msg += `• Uncheck ${packedItems.length} packed item${packedItems.length === 1 ? '' : 's'}\n`;
+  if (doneTodos.length > 0) msg += `• Uncheck ${doneTodos.length} completed to-do${doneTodos.length === 1 ? '' : 's'}\n`;
+  msg += `\nAll ${totalItems} items will be kept — nothing is deleted.\nYou can undo this within 24 hours.`;
+  if (!confirm(msg)) return;
 
   setLoading(true, 'Resetting items...');
 
   // Save snapshot first, then unpack
   fbOperation(refs.state.child('lastResetSnapshot').set({
-    items: Object.fromEntries(packedItems.map(([id]) => [id, true])),
+    items: Object.fromEntries(checkedItems.map(([id]) => [id, true])),
     timestamp: Date.now()
   }), { silent: true })
     .then(() => {
       const updates = {};
-      packedItems.forEach(([id]) => { updates[`${id}/packed`] = false; });
-      return fbOperation(refs.items.update(updates), { successMsg: 'All items unpacked' });
+      checkedItems.forEach(([id]) => { updates[`${id}/packed`] = false; });
+      return fbOperation(refs.items.update(updates));
     })
     .then(() => {
       closeSettings();
       checkUndoResetAvailable();
+      showToast('Reset complete — tap ⚙️ → Undo to restore');
     })
     .finally(() => setLoading(false));
 }
