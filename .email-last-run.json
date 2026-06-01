@@ -1,0 +1,11 @@
+{
+  "lastRunAt": "2026-06-01T11:24:30.000Z",
+  "description": "Timestamp of the most recently received email processed in the last inbox review run. On subsequent runs, only emails received after this timestamp will be treated as new.",
+  "runHistory": [
+    {
+      "runAt": "2026-06-01T11:30:00.000Z",
+      "emailsProcessed": 7,
+      "cutoffTimestamp": "2026-06-01T11:24:30.000Z"
+    }
+  ]
+}
