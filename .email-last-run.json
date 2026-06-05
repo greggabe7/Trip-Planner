@@ -1,0 +1,5 @@
+{
+  "lastRunTimestamp": "2026-06-05T11:13:52.000Z",
+  "lastRunDate": "2026-06-05",
+  "note": "Tracks the receivedDateTime of the most recent email processed. Next run fetches only emails received after this timestamp."
+}
