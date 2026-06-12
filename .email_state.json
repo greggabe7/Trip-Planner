@@ -1,0 +1,4 @@
+{
+  "lastRunTimestamp": "2026-06-12T13:10:00.000Z",
+  "description": "Tracks last inbox review run time. Future runs will only fetch emails received after this timestamp using the afterDateTime filter."
+}
