@@ -1,0 +1,5 @@
+{
+  "last_run_utc": "2026-06-15T13:00:37Z",
+  "last_run_iso": "2026-06-15",
+  "note": "Timestamp of the most recent email processed on the last run. Future runs will use last_run_utc as afterDateTime to fetch only new emails."
+}
