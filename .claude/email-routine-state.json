@@ -1,0 +1,4 @@
+{
+  "lastRunAt": "2026-07-07T14:25:45Z",
+  "note": "Tracks the last time the inbox-review routine ran, so subsequent runs can fetch mail received after this timestamp (afterDateTime filter) instead of relying on the mailbox's read/unread flag, which can be changed outside this routine (e.g. read on phone)."
+}
